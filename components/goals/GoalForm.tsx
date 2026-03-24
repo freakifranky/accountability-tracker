@@ -105,7 +105,7 @@ export default function GoalForm({ goal }: GoalFormProps) {
         <button
           type="submit"
           disabled={saving}
-          className="bg-gray-900 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50 transition-colors"
+          className="bg-[#e44332] text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-[#c0392b] disabled:opacity-50 transition-colors"
         >
           {saving ? "Saving…" : goal ? "Save changes" : "Create goal"}
         </button>

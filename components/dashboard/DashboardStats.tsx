@@ -1,31 +1,37 @@
 import type { GoalWithStats } from "@/lib/types";
+import { format } from "date-fns";
 
 interface DashboardStatsProps {
   goals: GoalWithStats[];
+  completedToday: number;
+  totalTasksDueToday: number;
 }
 
-export default function DashboardStats({ goals: activeGoals }: DashboardStatsProps) {
-  if (activeGoals.length === 0) return null;
-
-  const avgRate =
-    activeGoals.length > 0
-      ? Math.round(activeGoals.reduce((sum, g) => sum + g.commitmentRate, 0) / activeGoals.length)
-      : 0;
-  const longestStreak = Math.max(...activeGoals.map((g) => g.streak), 0);
-  const doneToday = activeGoals.filter((g) => g.todayCheckin?.completed).length;
+export default function DashboardStats({ goals, completedToday, totalTasksDueToday }: DashboardStatsProps) {
+  const avgRate = goals.length > 0
+    ? Math.round(goals.reduce((s, g) => s + g.commitmentRate, 0) / goals.length)
+    : 0;
+  const longestStreak = Math.max(...goals.map((g) => g.streak), 0);
+  const checkedInToday = goals.filter((g) => g.todayCheckin?.completed).length;
 
   return (
-    <div className="grid grid-cols-3 gap-4 mb-8">
-      {[
-        { label: "Active goals", value: activeGoals.length },
-        { label: "Avg. commitment", value: `${avgRate}%` },
-        { label: "Longest streak", value: `${longestStreak} 🔥` },
-      ].map((stat) => (
-        <div key={stat.label} className="bg-white border border-gray-200 rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{stat.label}</p>
-        </div>
-      ))}
+    <div className="mb-6">
+      <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-3">
+        {format(new Date(), "EEEE, MMMM d")}
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { value: `${checkedInToday}/${goals.length}`, label: "Goals today", accent: checkedInToday === goals.length && goals.length > 0 },
+          { value: `${completedToday}/${totalTasksDueToday}`, label: "Tasks today", accent: completedToday === totalTasksDueToday && totalTasksDueToday > 0 },
+          { value: `${avgRate}%`, label: "Avg. commitment", accent: avgRate >= 75 },
+          { value: `${longestStreak} 🔥`, label: "Top streak", accent: longestStreak >= 7 },
+        ].map((s) => (
+          <div key={s.label} className="bg-white border border-gray-100 rounded-xl p-3.5">
+            <p className={`text-xl font-bold ${s.accent ? "text-[#e44332]" : "text-gray-900"}`}>{s.value}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

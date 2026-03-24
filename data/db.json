@@ -1,0 +1,14 @@
+{
+  "goals": [
+    {
+      "id": "e6868cd4-c929-411c-9dfe-0a294f41f548",
+      "name": "Read 12 books in the rest of 2025",
+      "description": "I want to enrich my knowledge about anything while not giving up my attention span.",
+      "deadline": "2026-12-31",
+      "dailyAction": "Read any books:\nStatus:\n1. Surrounded by Idiots 2xx/350 ⚡\n2. xxx",
+      "createdAt": "2026-03-24T04:31:08.991Z",
+      "archivedAt": null
+    }
+  ],
+  "checkins": []
+}

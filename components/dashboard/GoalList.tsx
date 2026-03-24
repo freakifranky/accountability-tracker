@@ -10,9 +10,10 @@ import Link from "next/link";
 interface GoalListProps {
   activeGoals: GoalWithStats[];
   archivedGoals: GoalWithStats[];
+  taskCountByGoal: Record<string, number>;
 }
 
-export default function GoalList({ activeGoals, archivedGoals }: GoalListProps) {
+export default function GoalList({ activeGoals, archivedGoals, taskCountByGoal }: GoalListProps) {
   const router = useRouter();
   const [showArchived, setShowArchived] = useState(false);
 
@@ -23,40 +24,42 @@ export default function GoalList({ activeGoals, archivedGoals }: GoalListProps) 
 
   return (
     <div>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Active Goals</h2>
+        <Link href="/goals/new" className="text-xs text-[#e44332] hover:underline font-medium">+ Add goal</Link>
+      </div>
+
       {activeGoals.length === 0 ? (
         <EmptyState
-          title="No active goals"
-          description="Create your first goal to start tracking your commitment."
+          title="No active goals yet"
+          description="Create your first goal to start building better habits."
           action={
-            <Link
-              href="/goals/new"
-              className="bg-gray-900 text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-gray-700 transition-colors inline-block"
-            >
+            <Link href="/goals/new" className="bg-[#e44332] text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-[#c0392b] transition-colors inline-block">
               + New Goal
             </Link>
           }
         />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {activeGoals.map((goal) => (
-            <GoalCard key={goal.id} goal={goal} onArchive={handleArchive} />
+            <GoalCard key={goal.id} goal={goal} taskCount={taskCountByGoal[goal.id] ?? 0} onArchive={handleArchive} />
           ))}
         </div>
       )}
 
       {archivedGoals.length > 0 && (
-        <div className="mt-8">
+        <div className="mt-6">
           <button
             onClick={() => setShowArchived((v) => !v)}
-            className="text-sm text-gray-500 hover:text-gray-700 font-medium flex items-center gap-1"
+            className="text-xs text-gray-400 hover:text-gray-600 font-medium flex items-center gap-1"
           >
             <span>{showArchived ? "▾" : "▸"}</span>
-            Archived goals ({archivedGoals.length})
+            Archived ({archivedGoals.length})
           </button>
           {showArchived && (
-            <div className="space-y-3 mt-3">
+            <div className="space-y-2 mt-2">
               {archivedGoals.map((goal) => (
-                <GoalCard key={goal.id} goal={goal} onArchive={handleArchive} />
+                <GoalCard key={goal.id} goal={goal} taskCount={taskCountByGoal[goal.id] ?? 0} onArchive={handleArchive} />
               ))}
             </div>
           )}

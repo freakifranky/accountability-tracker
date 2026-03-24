@@ -17,6 +17,19 @@ export interface CheckIn {
   createdAt: string; // ISO timestamp
 }
 
+export type Priority = 1 | 2 | 3 | 4; // 1=urgent, 2=high, 3=medium, 4=none
+
+export interface Task {
+  id: string;
+  goalId: string | null; // null = standalone task
+  title: string;
+  dueDate: string | null; // YYYY-MM-DD
+  priority: Priority;
+  completed: boolean;
+  completedAt: string | null; // ISO timestamp
+  createdAt: string; // ISO timestamp
+}
+
 export interface GoalWithStats extends Goal {
   streak: number;
   commitmentRate: number;
@@ -42,4 +55,18 @@ export interface UpsertCheckinInput {
   date: string;
   completed: boolean;
   note?: string;
+}
+
+export interface CreateTaskInput {
+  goalId?: string;
+  title: string;
+  dueDate?: string;
+  priority?: Priority;
+}
+
+export interface UpdateTaskInput {
+  title?: string;
+  dueDate?: string;
+  priority?: Priority;
+  completed?: boolean;
 }

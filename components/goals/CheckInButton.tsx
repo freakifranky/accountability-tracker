@@ -48,7 +48,7 @@ export default function CheckInButton({ goalId, todayCheckin }: CheckInButtonPro
         ) : (
           <button
             onClick={() => setOpen(true)}
-            className="bg-gray-900 text-white font-medium text-sm px-5 py-2.5 rounded-xl hover:bg-gray-700 transition-colors"
+            className="bg-[#e44332] text-white font-medium text-sm px-5 py-2.5 rounded-xl hover:bg-[#c0392b] transition-colors"
           >
             Check in today
           </button>

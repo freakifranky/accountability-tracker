@@ -3,56 +3,72 @@
 import Link from "next/link";
 import { format, parseISO, isPast } from "date-fns";
 import type { GoalWithStats } from "@/lib/types";
-import Badge from "@/components/ui/Badge";
 import ProgressBar from "@/components/ui/ProgressBar";
+import clsx from "clsx";
 
 interface GoalCardProps {
   goal: GoalWithStats;
+  taskCount: number;
   onArchive: (id: string) => void;
 }
 
-export default function GoalCard({ goal, onArchive }: GoalCardProps) {
+export default function GoalCard({ goal, taskCount, onArchive }: GoalCardProps) {
   const isOverdue = goal.deadline && !goal.archivedAt && isPast(parseISO(goal.deadline));
+  const isDone = goal.todayCheckin?.completed === true;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-300 transition-colors">
-      <div className="flex items-start justify-between gap-3">
+    <div className={clsx(
+      "bg-white border rounded-xl p-4 transition-all hover:shadow-sm",
+      isDone ? "border-green-200" : "border-gray-100"
+    )}>
+      <div className="flex items-start gap-3">
+        {/* Check-in status dot */}
+        <div className={clsx(
+          "mt-1 w-3 h-3 rounded-full shrink-0",
+          isDone ? "bg-green-400" : "bg-gray-200"
+        )} title={isDone ? "Checked in today" : "Not checked in yet"} />
+
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <Link
               href={`/goals/${goal.id}`}
-              className="font-semibold text-gray-900 hover:text-gray-600 truncate"
+              className="font-semibold text-gray-900 hover:text-[#e44332] transition-colors text-sm"
             >
               {goal.name}
             </Link>
-            {goal.archivedAt && <Badge variant="gray">Archived</Badge>}
-            {isOverdue && <Badge variant="red">Overdue</Badge>}
-            {goal.todayCheckin?.completed && <Badge variant="green">Done today</Badge>}
+            {goal.archivedAt && (
+              <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">Archived</span>
+            )}
+            {isOverdue && (
+              <span className="text-xs text-[#e44332] bg-red-50 px-1.5 py-0.5 rounded">Overdue</span>
+            )}
           </div>
-          <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">{goal.dailyAction}</p>
-        </div>
+          <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{goal.dailyAction}</p>
 
-        <div className="flex items-center gap-1 shrink-0">
-          <span className="text-xl" title={`${goal.streak}-day streak`}>🔥</span>
-          <span className="text-sm font-bold text-gray-700">{goal.streak}</span>
+          <div className="flex items-center gap-3 mt-2.5">
+            <div className="flex-1">
+              <ProgressBar value={goal.commitmentRate} showValue={false} />
+            </div>
+            <span className="text-xs font-semibold text-gray-500 shrink-0">{goal.commitmentRate}%</span>
+            <span className="text-xs text-gray-500 shrink-0">🔥 {goal.streak}</span>
+            {taskCount > 0 && (
+              <span className="text-xs text-gray-400 shrink-0">{taskCount} task{taskCount > 1 ? "s" : ""}</span>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="mt-3">
-        <ProgressBar value={goal.commitmentRate} label="Commitment rate" />
-      </div>
-
-      <div className="mt-3 flex items-center justify-between text-xs text-gray-400">
-        <span>
-          {goal.deadline ? `Due ${format(parseISO(goal.deadline), "MMM d, yyyy")}` : "No deadline"}
+      <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-gray-50">
+        <span className="text-xs text-gray-300">
+          {goal.deadline ? `Due ${format(parseISO(goal.deadline), "MMM d")}` : "No deadline"}
         </span>
         <div className="flex gap-3">
-          <Link href={`/goals/${goal.id}`} className="hover:text-gray-700 transition-colors">
-            View
+          <Link href={`/goals/${goal.id}`} className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
+            Open
           </Link>
           <button
             onClick={() => onArchive(goal.id)}
-            className="hover:text-gray-700 transition-colors"
+            className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
           >
             {goal.archivedAt ? "Unarchive" : "Archive"}
           </button>
