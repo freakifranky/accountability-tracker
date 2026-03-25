@@ -33,8 +33,12 @@ export default function GoalForm({ goal }: GoalFormProps) {
         body: JSON.stringify({ name: name.trim(), dailyAction: dailyAction.trim(), description: description.trim() || undefined, deadline: deadline || undefined }),
       });
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? "Failed to save goal");
+        let message = "Failed to save goal";
+        try {
+          const data = await res.json();
+          message = data.error ?? message;
+        } catch {}
+        throw new Error(message);
       }
       const saved = await res.json();
       router.push(goal ? `/goals/${goal.id}` : `/goals/${saved.id}`);

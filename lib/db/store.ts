@@ -26,13 +26,14 @@ function migrateData(data: Partial<DbData>): DbData {
   return merged;
 }
 
+// Vercel Storage (Upstash) provides KV_REST_API_URL/TOKEN, direct Upstash uses UPSTASH_REDIS_REST_URL/TOKEN
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
+
 // --- Upstash Redis (production / Vercel) ---
 async function redisRead(): Promise<DbData> {
   const { Redis } = await import("@upstash/redis");
-  const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL!,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-  });
+  const redis = new Redis({ url: redisUrl!, token: redisToken! });
   const data = await redis.get<DbData>("accountability-db");
   if (!data) return defaultDb();
   return migrateData(data);
@@ -40,10 +41,7 @@ async function redisRead(): Promise<DbData> {
 
 async function redisWrite(data: DbData): Promise<void> {
   const { Redis } = await import("@upstash/redis");
-  const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL!,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-  });
+  const redis = new Redis({ url: redisUrl!, token: redisToken! });
   await redis.set("accountability-db", data);
 }
 
@@ -70,13 +68,11 @@ async function fileWrite(data: DbData): Promise<void> {
     if (!fs.default.existsSync(dir)) fs.default.mkdirSync(dir, { recursive: true });
     fs.default.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), "utf-8");
   } catch {
-    // Filesystem is read-only (Vercel production without Redis configured).
-    // Set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN in Vercel env vars.
     console.warn("[db] Write skipped: filesystem is read-only. Configure Upstash Redis for persistent storage.");
   }
 }
 
-const useRedis = !!process.env.UPSTASH_REDIS_REST_URL;
+const useRedis = !!(redisUrl && redisToken);
 
 export async function readDb(): Promise<DbData> {
   return useRedis ? redisRead() : fileRead();
