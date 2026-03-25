@@ -7,10 +7,10 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { title, goalId, dueDate, priority } = body;
+  const { title, goalId, dueDate, priority, recurrence } = body;
   if (!title?.trim()) {
     return NextResponse.json({ error: "title is required" }, { status: 400 });
   }
-  const task = createTask({ title: title.trim(), goalId, dueDate, priority });
+  const task = createTask({ title: title.trim(), goalId, dueDate, priority, recurrence });
   return NextResponse.json(task, { status: 201 });
 }

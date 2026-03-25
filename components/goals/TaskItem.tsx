@@ -66,6 +66,9 @@ export default function TaskItem({ task, showGoal, goalName }: TaskItemProps) {
               {isDueToday ? "Today" : isOverdue ? `Overdue · ${format(parseISO(task.dueDate), "MMM d")}` : format(parseISO(task.dueDate), "MMM d")}
             </span>
           )}
+          {task.recurrence && task.recurrence !== "none" && (
+            <span className="text-xs text-gray-400">↻ {task.recurrence}</span>
+          )}
           {showGoal && goalName && (
             <span className="text-xs text-gray-400">#{goalName}</span>
           )}

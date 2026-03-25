@@ -19,12 +19,15 @@ export interface CheckIn {
 
 export type Priority = 1 | 2 | 3 | 4; // 1=urgent, 2=high, 3=medium, 4=none
 
+export type RecurrenceRule = 'none' | 'daily' | 'weekly' | 'monthly';
+
 export interface Task {
   id: string;
   goalId: string | null; // null = standalone task
   title: string;
   dueDate: string | null; // YYYY-MM-DD
   priority: Priority;
+  recurrence: RecurrenceRule;
   completed: boolean;
   completedAt: string | null; // ISO timestamp
   createdAt: string; // ISO timestamp
@@ -57,16 +60,34 @@ export interface UpsertCheckinInput {
   note?: string;
 }
 
+export interface PushSubscriptionRecord {
+  id: string;
+  subscription: {
+    endpoint: string;
+    keys: { p256dh: string; auth: string };
+  };
+  createdAt: string;
+}
+
+export interface NotificationSettings {
+  enabled: boolean;
+  reminderTime: string; // "HH:MM"
+  days: number[]; // 0=Sun…6=Sat, empty=all days
+  lastNotifiedDate: string | null; // "YYYY-MM-DD"
+}
+
 export interface CreateTaskInput {
   goalId?: string;
   title: string;
   dueDate?: string;
   priority?: Priority;
+  recurrence?: RecurrenceRule;
 }
 
 export interface UpdateTaskInput {
   title?: string;
   dueDate?: string;
   priority?: Priority;
+  recurrence?: RecurrenceRule;
   completed?: boolean;
 }

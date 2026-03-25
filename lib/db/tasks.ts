@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { readDb, writeDb } from "./store";
+import { computeNextDueDate } from "../recurrence";
 import type { Task, CreateTaskInput, UpdateTaskInput } from "../types";
 
 export function getAllTasks(): Task[] {
@@ -42,6 +43,7 @@ export function createTask(input: CreateTaskInput): Task {
     title: input.title,
     dueDate: input.dueDate ?? null,
     priority: input.priority ?? 4,
+    recurrence: input.recurrence ?? "none",
     completed: false,
     completedAt: null,
     createdAt: new Date().toISOString(),
@@ -67,7 +69,20 @@ export function updateTask(id: string, input: UpdateTaskInput): Task | null {
         : prev.completedAt,
   };
   writeDb(db);
-  return db.tasks[idx];
+  const updated = db.tasks[idx];
+
+  // Spawn next occurrence when a recurring task is completed
+  if (input.completed === true && !prev.completed && updated.recurrence !== "none") {
+    createTask({
+      goalId: updated.goalId ?? undefined,
+      title: updated.title,
+      priority: updated.priority,
+      recurrence: updated.recurrence,
+      dueDate: computeNextDueDate(updated.dueDate, updated.recurrence),
+    });
+  }
+
+  return updated;
 }
 
 export function deleteTask(id: string): boolean {

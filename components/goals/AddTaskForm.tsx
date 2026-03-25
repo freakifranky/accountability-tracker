@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Priority } from "@/lib/types";
-import clsx from "clsx";
+import type { Priority, RecurrenceRule } from "@/lib/types";
 
 interface AddTaskFormProps {
   goalId?: string;
@@ -11,11 +10,18 @@ interface AddTaskFormProps {
   onClose?: () => void;
 }
 
-const PRIORITY_OPTIONS: { value: Priority; label: string; color: string }[] = [
-  { value: 1, label: "Urgent", color: "text-[#e44332]" },
-  { value: 2, label: "High", color: "text-orange-400" },
-  { value: 3, label: "Medium", color: "text-blue-400" },
-  { value: 4, label: "None", color: "text-gray-400" },
+const PRIORITY_OPTIONS: { value: Priority; label: string }[] = [
+  { value: 1, label: "P1 Urgent" },
+  { value: 2, label: "P2 High" },
+  { value: 3, label: "P3 Medium" },
+  { value: 4, label: "P4 None" },
+];
+
+const RECURRENCE_OPTIONS: { value: RecurrenceRule; label: string }[] = [
+  { value: "none", label: "No repeat" },
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
 ];
 
 export default function AddTaskForm({ goalId, defaultDueDate, onClose }: AddTaskFormProps) {
@@ -23,6 +29,7 @@ export default function AddTaskForm({ goalId, defaultDueDate, onClose }: AddTask
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState(defaultDueDate ?? "");
   const [priority, setPriority] = useState<Priority>(4);
+  const [recurrence, setRecurrence] = useState<RecurrenceRule>("none");
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -32,12 +39,19 @@ export default function AddTaskForm({ goalId, defaultDueDate, onClose }: AddTask
     await fetch("/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: title.trim(), goalId, dueDate: dueDate || undefined, priority }),
+      body: JSON.stringify({
+        title: title.trim(),
+        goalId,
+        dueDate: dueDate || undefined,
+        priority,
+        recurrence,
+      }),
     });
     setSaving(false);
     setTitle("");
     setDueDate(defaultDueDate ?? "");
     setPriority(4);
+    setRecurrence("none");
     router.refresh();
     onClose?.();
   }
@@ -65,7 +79,16 @@ export default function AddTaskForm({ goalId, defaultDueDate, onClose }: AddTask
           className="text-xs text-gray-500 border border-gray-200 rounded px-2 py-1 outline-none focus:border-gray-400"
         >
           {PRIORITY_OPTIONS.map((p) => (
-            <option key={p.value} value={p.value}>P{p.value} {p.label}</option>
+            <option key={p.value} value={p.value}>{p.label}</option>
+          ))}
+        </select>
+        <select
+          value={recurrence}
+          onChange={(e) => setRecurrence(e.target.value as RecurrenceRule)}
+          className="text-xs text-gray-500 border border-gray-200 rounded px-2 py-1 outline-none focus:border-gray-400"
+        >
+          {RECURRENCE_OPTIONS.map((r) => (
+            <option key={r.value} value={r.value}>{r.label}</option>
           ))}
         </select>
       </div>

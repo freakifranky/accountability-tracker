@@ -8,6 +8,7 @@ const navItems = [
   { href: "/dashboard", label: "Today", icon: "⬜" },
   { href: "/calendar", label: "Calendar", icon: "📅" },
   { href: "/progress", label: "Progress", icon: "📊" },
+  { href: "/settings", label: "Settings", icon: "⚙️" },
 ];
 
 export default function Navbar() {
