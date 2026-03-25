@@ -47,25 +47,33 @@ async function redisWrite(data: DbData): Promise<void> {
   await redis.set("accountability-db", data);
 }
 
-// --- File system (local dev) ---
+// --- File system (local dev only) ---
 async function fileRead(): Promise<DbData> {
-  const fs = await import("fs");
-  const path = await import("path");
-  const DB_PATH = path.default.join(process.cwd(), "data", "db.json");
-  const dir = path.default.dirname(DB_PATH);
-  if (!fs.default.existsSync(dir)) fs.default.mkdirSync(dir, { recursive: true });
-  if (!fs.default.existsSync(DB_PATH)) return defaultDb();
-  const raw = fs.default.readFileSync(DB_PATH, "utf-8");
-  return migrateData(JSON.parse(raw) as Partial<DbData>);
+  try {
+    const fs = await import("fs");
+    const path = await import("path");
+    const DB_PATH = path.default.join(process.cwd(), "data", "db.json");
+    if (!fs.default.existsSync(DB_PATH)) return defaultDb();
+    const raw = fs.default.readFileSync(DB_PATH, "utf-8");
+    return migrateData(JSON.parse(raw) as Partial<DbData>);
+  } catch {
+    return defaultDb();
+  }
 }
 
 async function fileWrite(data: DbData): Promise<void> {
-  const fs = await import("fs");
-  const path = await import("path");
-  const DB_PATH = path.default.join(process.cwd(), "data", "db.json");
-  const dir = path.default.dirname(DB_PATH);
-  if (!fs.default.existsSync(dir)) fs.default.mkdirSync(dir, { recursive: true });
-  fs.default.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), "utf-8");
+  try {
+    const fs = await import("fs");
+    const path = await import("path");
+    const DB_PATH = path.default.join(process.cwd(), "data", "db.json");
+    const dir = path.default.dirname(DB_PATH);
+    if (!fs.default.existsSync(dir)) fs.default.mkdirSync(dir, { recursive: true });
+    fs.default.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), "utf-8");
+  } catch {
+    // Filesystem is read-only (Vercel production without Redis configured).
+    // Set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN in Vercel env vars.
+    console.warn("[db] Write skipped: filesystem is read-only. Configure Upstash Redis for persistent storage.");
+  }
 }
 
 const useRedis = !!process.env.UPSTASH_REDIS_REST_URL;
