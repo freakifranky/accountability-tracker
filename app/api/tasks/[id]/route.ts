@@ -3,7 +3,7 @@ import { getTaskById, updateTask, deleteTask } from "@/lib/db/tasks";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const task = getTaskById(id);
+  const task = await getTaskById(id);
   if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(task);
 }
@@ -11,14 +11,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await request.json();
-  const updated = updateTask(id, body);
+  const updated = await updateTask(id, body);
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(updated);
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const deleted = deleteTask(id);
+  const deleted = await deleteTask(id);
   if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ success: true });
 }

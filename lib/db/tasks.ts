@@ -3,10 +3,9 @@ import { readDb, writeDb } from "./store";
 import { computeNextDueDate } from "../recurrence";
 import type { Task, CreateTaskInput, UpdateTaskInput } from "../types";
 
-export function getAllTasks(): Task[] {
-  const db = readDb();
+export async function getAllTasks(): Promise<Task[]> {
+  const db = await readDb();
   return db.tasks.sort((a, b) => {
-    // Sort: incomplete first, then by dueDate asc, then by priority asc
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
     if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
     if (a.dueDate) return -1;
@@ -15,8 +14,8 @@ export function getAllTasks(): Task[] {
   });
 }
 
-export function getTasksByGoalId(goalId: string): Task[] {
-  const db = readDb();
+export async function getTasksByGoalId(goalId: string): Promise<Task[]> {
+  const db = await readDb();
   return db.tasks
     .filter((t) => t.goalId === goalId)
     .sort((a, b) => {
@@ -25,18 +24,18 @@ export function getTasksByGoalId(goalId: string): Task[] {
     });
 }
 
-export function getTasksByDate(date: string): Task[] {
-  const db = readDb();
+export async function getTasksByDate(date: string): Promise<Task[]> {
+  const db = await readDb();
   return db.tasks.filter((t) => t.dueDate === date);
 }
 
-export function getTaskById(id: string): Task | null {
-  const db = readDb();
+export async function getTaskById(id: string): Promise<Task | null> {
+  const db = await readDb();
   return db.tasks.find((t) => t.id === id) ?? null;
 }
 
-export function createTask(input: CreateTaskInput): Task {
-  const db = readDb();
+export async function createTask(input: CreateTaskInput): Promise<Task> {
+  const db = await readDb();
   const task: Task = {
     id: uuidv4(),
     goalId: input.goalId ?? null,
@@ -49,12 +48,12 @@ export function createTask(input: CreateTaskInput): Task {
     createdAt: new Date().toISOString(),
   };
   db.tasks.push(task);
-  writeDb(db);
+  await writeDb(db);
   return task;
 }
 
-export function updateTask(id: string, input: UpdateTaskInput): Task | null {
-  const db = readDb();
+export async function updateTask(id: string, input: UpdateTaskInput): Promise<Task | null> {
+  const db = await readDb();
   const idx = db.tasks.findIndex((t) => t.id === id);
   if (idx === -1) return null;
   const prev = db.tasks[idx];
@@ -68,12 +67,12 @@ export function updateTask(id: string, input: UpdateTaskInput): Task | null {
         ? null
         : prev.completedAt,
   };
-  writeDb(db);
+  await writeDb(db);
   const updated = db.tasks[idx];
 
   // Spawn next occurrence when a recurring task is completed
   if (input.completed === true && !prev.completed && updated.recurrence !== "none") {
-    createTask({
+    await createTask({
       goalId: updated.goalId ?? undefined,
       title: updated.title,
       priority: updated.priority,
@@ -85,10 +84,10 @@ export function updateTask(id: string, input: UpdateTaskInput): Task | null {
   return updated;
 }
 
-export function deleteTask(id: string): boolean {
-  const db = readDb();
+export async function deleteTask(id: string): Promise<boolean> {
+  const db = await readDb();
   const before = db.tasks.length;
   db.tasks = db.tasks.filter((t) => t.id !== id);
-  writeDb(db);
+  await writeDb(db);
   return db.tasks.length < before;
 }

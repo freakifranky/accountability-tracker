@@ -3,23 +3,25 @@ import { getCheckinsByGoalId } from "@/lib/db/checkins";
 import { getAllTasks } from "@/lib/db/tasks";
 import { calculateStreak } from "@/lib/calculations/streak";
 import { calculateCommitmentRate } from "@/lib/calculations/commitmentRate";
-import { format, subDays, eachDayOfInterval, parseISO } from "date-fns";
+import { format, subDays, eachDayOfInterval } from "date-fns";
 import ProgressView from "@/components/progress/ProgressView";
 import type { GoalWithStats } from "@/lib/types";
 
 export default async function ProgressPage() {
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
-  const goals = getAllGoals(false);
-  const allTasks = getAllTasks();
+  const goals = await getAllGoals(false);
+  const allTasks = await getAllTasks();
 
-  const goalsWithStats: GoalWithStats[] = goals.map((goal) => {
-    const checkins = getCheckinsByGoalId(goal.id);
-    const streak = calculateStreak(checkins, today);
-    const commitmentRate = calculateCommitmentRate(checkins, goal.createdAt, today);
-    const todayCheckin = checkins.find((c) => c.date === todayStr) ?? null;
-    return { ...goal, streak, commitmentRate, todayCheckin };
-  });
+  const goalsWithStats: GoalWithStats[] = await Promise.all(
+    goals.map(async (goal) => {
+      const checkins = await getCheckinsByGoalId(goal.id);
+      const streak = calculateStreak(checkins, today);
+      const commitmentRate = calculateCommitmentRate(checkins, goal.createdAt, today);
+      const todayCheckin = checkins.find((c) => c.date === todayStr) ?? null;
+      return { ...goal, streak, commitmentRate, todayCheckin };
+    })
+  );
 
   // Build last 4 weeks of check-in data for bar chart
   const last28Days = eachDayOfInterval({ start: subDays(today, 27), end: today });
@@ -28,7 +30,7 @@ export default async function ProgressPage() {
     checkinsByDate[format(day, "yyyy-MM-dd")] = 0;
   }
   for (const goal of goals) {
-    const checkins = getCheckinsByGoalId(goal.id);
+    const checkins = await getCheckinsByGoalId(goal.id);
     for (const c of checkins) {
       if (c.completed && checkinsByDate[c.date] !== undefined) {
         checkinsByDate[c.date]++;

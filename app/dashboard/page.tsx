@@ -13,16 +13,18 @@ export default async function DashboardPage() {
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
 
-  const allGoals = getAllGoals(true);
-  const allTasks = getAllTasks();
+  const allGoals = await getAllGoals(true);
+  const allTasks = await getAllTasks();
 
-  const goalsWithStats: GoalWithStats[] = allGoals.map((goal) => {
-    const checkins = getCheckinsByGoalId(goal.id);
-    const streak = calculateStreak(checkins, today);
-    const commitmentRate = calculateCommitmentRate(checkins, goal.createdAt, today);
-    const todayCheckin = checkins.find((c) => c.date === todayStr) ?? null;
-    return { ...goal, streak, commitmentRate, todayCheckin };
-  });
+  const goalsWithStats: GoalWithStats[] = await Promise.all(
+    allGoals.map(async (goal) => {
+      const checkins = await getCheckinsByGoalId(goal.id);
+      const streak = calculateStreak(checkins, today);
+      const commitmentRate = calculateCommitmentRate(checkins, goal.createdAt, today);
+      const todayCheckin = checkins.find((c) => c.date === todayStr) ?? null;
+      return { ...goal, streak, commitmentRate, todayCheckin };
+    })
+  );
 
   const activeGoals = goalsWithStats.filter((g) => !g.archivedAt);
   const archivedGoals = goalsWithStats.filter((g) => g.archivedAt);

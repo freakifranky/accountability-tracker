@@ -2,15 +2,15 @@ import { v4 as uuidv4 } from "uuid";
 import { readDb, writeDb } from "./store";
 import type { CheckIn, UpsertCheckinInput } from "../types";
 
-export function getCheckinsByGoalId(goalId: string): CheckIn[] {
-  const db = readDb();
+export async function getCheckinsByGoalId(goalId: string): Promise<CheckIn[]> {
+  const db = await readDb();
   return db.checkins
     .filter((c) => c.goalId === goalId)
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
-export function upsertCheckin(input: UpsertCheckinInput): CheckIn {
-  const db = readDb();
+export async function upsertCheckin(input: UpsertCheckinInput): Promise<CheckIn> {
+  const db = await readDb();
   const existing = db.checkins.findIndex(
     (c) => c.goalId === input.goalId && c.date === input.date
   );
@@ -20,7 +20,7 @@ export function upsertCheckin(input: UpsertCheckinInput): CheckIn {
       completed: input.completed,
       note: input.note ?? null,
     };
-    writeDb(db);
+    await writeDb(db);
     return db.checkins[existing];
   }
   const checkin: CheckIn = {
@@ -32,6 +32,6 @@ export function upsertCheckin(input: UpsertCheckinInput): CheckIn {
     createdAt: new Date().toISOString(),
   };
   db.checkins.push(checkin);
-  writeDb(db);
+  await writeDb(db);
   return checkin;
 }

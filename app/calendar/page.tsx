@@ -4,13 +4,13 @@ import { getAllTasks } from "@/lib/db/tasks";
 import CalendarView from "@/components/calendar/CalendarView";
 
 export default async function CalendarPage() {
-  const goals = getAllGoals(false);
-  const tasks = getAllTasks();
+  const goals = await getAllGoals(false);
+  const tasks = await getAllTasks();
 
   // Build checkin map: date -> goalId[]
   const checkinMap: Record<string, string[]> = {};
   for (const goal of goals) {
-    const checkins = getCheckinsByGoalId(goal.id);
+    const checkins = await getCheckinsByGoalId(goal.id);
     for (const c of checkins) {
       if (c.completed) {
         if (!checkinMap[c.date]) checkinMap[c.date] = [];

@@ -12,6 +12,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const checkin = upsertCheckin({ goalId, date, completed, note });
+  const checkin = await upsertCheckin({ goalId, date, completed, note });
   return NextResponse.json(checkin, { status: 201 });
 }

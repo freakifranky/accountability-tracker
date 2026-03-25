@@ -15,11 +15,11 @@ import DeleteGoalButton from "@/components/goals/DeleteGoalButton";
 
 export default async function GoalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const goal = getGoalById(id);
+  const goal = await getGoalById(id);
   if (!goal) notFound();
 
-  const checkins = getCheckinsByGoalId(id);
-  const tasks = getTasksByGoalId(id);
+  const checkins = await getCheckinsByGoalId(id);
+  const tasks = await getTasksByGoalId(id);
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
   const streak = calculateStreak(checkins, today);

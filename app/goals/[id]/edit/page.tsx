@@ -4,7 +4,7 @@ import GoalForm from "@/components/goals/GoalForm";
 
 export default async function EditGoalPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const goal = getGoalById(id);
+  const goal = await getGoalById(id);
   if (!goal) notFound();
 
   return (

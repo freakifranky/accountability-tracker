@@ -4,7 +4,7 @@ import { getAllGoals, createGoal } from "@/lib/db/goals";
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const includeArchived = searchParams.get("archived") === "true";
-  const goals = getAllGoals(includeArchived);
+  const goals = await getAllGoals(includeArchived);
   return NextResponse.json(goals);
 }
 
@@ -19,6 +19,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const goal = createGoal({ name: name.trim(), description, deadline, dailyAction: dailyAction.trim() });
+  const goal = await createGoal({ name: name.trim(), description, deadline, dailyAction: dailyAction.trim() });
   return NextResponse.json(goal, { status: 201 });
 }

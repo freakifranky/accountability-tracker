@@ -20,12 +20,12 @@ if (vapidConfigured) {
 export async function POST() {
   if (!vapidConfigured) {
     return NextResponse.json(
-      { error: "Push notifications not configured. Set VAPID keys in .env.local." },
+      { error: "Push notifications not configured. Set VAPID keys in environment variables." },
       { status: 503 }
     );
   }
 
-  const subscriptions = getAllSubscriptions();
+  const subscriptions = await getAllSubscriptions();
   if (subscriptions.length === 0) {
     return NextResponse.json({ sent: 0, message: "No subscriptions" });
   }
@@ -45,8 +45,7 @@ export async function POST() {
     )
   );
 
-  // Record that we notified today
-  updateNotificationSettings({ lastNotifiedDate: format(new Date(), "yyyy-MM-dd") });
+  await updateNotificationSettings({ lastNotifiedDate: format(new Date(), "yyyy-MM-dd") });
 
   const sent = results.filter((r) => r.status === "fulfilled").length;
   const failed = results.filter((r) => r.status === "rejected").length;

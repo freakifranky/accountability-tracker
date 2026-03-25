@@ -2,15 +2,15 @@ import { v4 as uuidv4 } from "uuid";
 import { readDb, writeDb } from "./store";
 import type { PushSubscriptionRecord, NotificationSettings } from "../types";
 
-export function getAllSubscriptions(): PushSubscriptionRecord[] {
-  return readDb().pushSubscriptions;
+export async function getAllSubscriptions(): Promise<PushSubscriptionRecord[]> {
+  return (await readDb()).pushSubscriptions;
 }
 
-export function saveSubscription(sub: {
+export async function saveSubscription(sub: {
   endpoint: string;
   keys: { p256dh: string; auth: string };
-}): PushSubscriptionRecord {
-  const db = readDb();
+}): Promise<PushSubscriptionRecord> {
+  const db = await readDb();
   const existingIdx = db.pushSubscriptions.findIndex(
     (s) => s.subscription.endpoint === sub.endpoint
   );
@@ -27,27 +27,27 @@ export function saveSubscription(sub: {
   } else {
     db.pushSubscriptions.push(record);
   }
-  writeDb(db);
+  await writeDb(db);
   return record;
 }
 
-export function deleteSubscription(endpoint: string): void {
-  const db = readDb();
+export async function deleteSubscription(endpoint: string): Promise<void> {
+  const db = await readDb();
   db.pushSubscriptions = db.pushSubscriptions.filter(
     (s) => s.subscription.endpoint !== endpoint
   );
-  writeDb(db);
+  await writeDb(db);
 }
 
-export function getNotificationSettings(): NotificationSettings {
-  return readDb().notificationSettings;
+export async function getNotificationSettings(): Promise<NotificationSettings> {
+  return (await readDb()).notificationSettings;
 }
 
-export function updateNotificationSettings(
+export async function updateNotificationSettings(
   patch: Partial<NotificationSettings>
-): NotificationSettings {
-  const db = readDb();
+): Promise<NotificationSettings> {
+  const db = await readDb();
   db.notificationSettings = { ...db.notificationSettings, ...patch };
-  writeDb(db);
+  await writeDb(db);
   return db.notificationSettings;
 }
