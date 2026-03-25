@@ -83,5 +83,10 @@ export async function readDb(): Promise<DbData> {
 }
 
 export async function writeDb(data: DbData): Promise<void> {
+  if (!useRedis && process.env.VERCEL) {
+    throw new Error(
+      "No persistent storage configured. Add UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to your Vercel environment variables."
+    );
+  }
   return useRedis ? redisWrite(data) : fileWrite(data);
 }
