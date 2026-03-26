@@ -8,6 +8,8 @@ import type { GoalWithStats } from "@/lib/types";
 import DashboardStats from "@/components/dashboard/DashboardStats";
 import GoalList from "@/components/dashboard/GoalList";
 import TodayTasks from "@/components/dashboard/TodayTasks";
+import InstallBanner from "@/components/pwa/InstallBanner";
+import NotificationNudge from "@/components/push/NotificationNudge";
 
 export default async function DashboardPage() {
   const today = new Date();
@@ -42,6 +44,8 @@ export default async function DashboardPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-20 sm:pb-6">
+      <InstallBanner />
+      <NotificationNudge />
       <DashboardStats
         goals={activeGoals}
         completedToday={completedToday}

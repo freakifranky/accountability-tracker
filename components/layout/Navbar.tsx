@@ -47,7 +47,7 @@ export default function Navbar() {
       </div>
 
       {/* Mobile bottom nav */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex z-50">
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {navItems.map((item) => (
           <Link
             key={item.href}

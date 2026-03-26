@@ -22,6 +22,18 @@ export default function PushNotificationInit() {
       // Skip if notifications aren't granted
       if (Notification.permission !== "granted") return;
 
+      // Update app icon badge with total streak count
+      try {
+        const statsRes = await fetch("/api/stats");
+        const stats = await statsRes.json();
+        if ("setAppBadge" in navigator && stats.totalStreak > 0) {
+          (navigator as Navigator & { setAppBadge: (n: number) => Promise<void> })
+            .setAppBadge(stats.totalStreak).catch(() => {});
+        }
+      } catch {
+        // Badge is optional, ignore errors
+      }
+
       try {
         const res = await fetch("/api/push/settings");
         const settings = await res.json();

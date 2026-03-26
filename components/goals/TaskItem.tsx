@@ -76,7 +76,7 @@ export default function TaskItem({ task, showGoal, goalName }: TaskItemProps) {
       </div>
       <button
         onClick={deleteTask}
-        className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 text-sm transition-all px-1"
+        className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-gray-300 hover:text-red-400 text-sm transition-all px-1"
       >
         ×
       </button>
