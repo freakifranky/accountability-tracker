@@ -41,8 +41,10 @@ export default function TaskItem({ task, showGoal, goalName }: TaskItemProps) {
       <button
         onClick={toggleComplete}
         disabled={loading}
-        className={clsx(
-          "mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 transition-colors flex items-center justify-center",
+        className="mt-0.5 p-2 -m-2 shrink-0 flex items-center justify-center"
+      >
+        <span className={clsx(
+          "w-4 h-4 rounded-full border-2 transition-colors flex items-center justify-center",
           task.completed
             ? "bg-gray-300 border-gray-300"
             : task.priority === 1
@@ -52,9 +54,9 @@ export default function TaskItem({ task, showGoal, goalName }: TaskItemProps) {
             : task.priority === 3
             ? "border-blue-400 hover:bg-blue-50"
             : "border-gray-300 hover:bg-gray-100"
-        )}
-      >
-        {task.completed && <span className="text-white text-[8px] font-bold">✓</span>}
+        )}>
+          {task.completed && <span className="text-white text-[8px] font-bold">✓</span>}
+        </span>
       </button>
       <div className="flex-1 min-w-0">
         <p className={clsx("text-sm text-gray-800 leading-snug", task.completed && "line-through text-gray-400")}>

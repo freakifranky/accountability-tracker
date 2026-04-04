@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import clsx from "clsx";
 
 const navItems = [
-  { href: "/dashboard", label: "Today", icon: "⬜" },
+  { href: "/dashboard", label: "Today", icon: "🏠" },
   { href: "/calendar", label: "Calendar", icon: "📅" },
   { href: "/progress", label: "Progress", icon: "📊" },
   { href: "/settings", label: "Settings", icon: "⚙️" },
@@ -27,7 +27,7 @@ export default function Navbar() {
                 key={item.href}
                 href={item.href}
                 className={clsx(
-                  "text-sm px-3 py-1.5 rounded-lg transition-colors font-medium",
+                  "text-sm px-3 py-2.5 rounded-lg transition-colors font-medium min-h-[44px] flex items-center",
                   pathname === item.href
                     ? "bg-red-50 text-[#e44332]"
                     : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
@@ -40,7 +40,7 @@ export default function Navbar() {
         </div>
         <Link
           href="/goals/new"
-          className="bg-[#e44332] text-white text-sm font-medium px-4 py-1.5 rounded-lg hover:bg-[#c0392b] transition-colors"
+          className="bg-[#e44332] text-white text-sm font-medium px-4 py-2.5 rounded-lg hover:bg-[#c0392b] transition-colors min-h-[44px] flex items-center"
         >
           + New Goal
         </Link>

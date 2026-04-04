@@ -62,13 +62,13 @@ export default function GoalCard({ goal, taskCount, onArchive }: GoalCardProps) 
         <span className="text-xs text-gray-300">
           {goal.deadline ? `Due ${format(parseISO(goal.deadline), "MMM d")}` : "No deadline"}
         </span>
-        <div className="flex gap-3">
-          <Link href={`/goals/${goal.id}`} className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
+        <div className="flex gap-1">
+          <Link href={`/goals/${goal.id}`} className="text-xs text-gray-400 hover:text-gray-700 transition-colors py-2 px-2 -my-2 rounded-md hover:bg-gray-50">
             Open
           </Link>
           <button
             onClick={() => onArchive(goal.id)}
-            className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
+            className="text-xs text-gray-400 hover:text-red-500 transition-colors py-2 px-2 -my-2 rounded-md hover:bg-red-50"
           >
             {goal.archivedAt ? "Unarchive" : "Archive"}
           </button>
