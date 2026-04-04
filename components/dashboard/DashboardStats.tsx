@@ -27,7 +27,7 @@ export default function DashboardStats({ goals, completedToday, totalTasksDueTod
           { value: `${longestStreak} 🔥`, label: "Top streak", accent: longestStreak >= 7 },
         ].map((s) => (
           <div key={s.label} className="bg-white border border-gray-100 rounded-xl p-3.5">
-            <p className={`text-xl font-bold ${s.accent ? "text-[#e44332]" : "text-gray-900"}`}>{s.value}</p>
+            <p className={`text-2xl font-bold ${s.accent ? "text-[#e44332]" : "text-gray-900"}`}>{s.value}</p>
             <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
           </div>
         ))}
