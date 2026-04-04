@@ -24,7 +24,20 @@ export default function NotificationSettings() {
     }
     fetch("/api/push/settings")
       .then((r) => r.json())
-      .then((s) => setSettings(s));
+      .then((s: NotificationSettings) => {
+        // Auto-detect and save timezone if not already set
+        const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (detectedTz && !s.timezone) {
+          fetch("/api/push/settings", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ timezone: detectedTz }),
+          });
+          setSettings({ ...s, timezone: detectedTz });
+        } else {
+          setSettings(s);
+        }
+      });
 
     // Check if already subscribed
     if (pushSupported) {
@@ -162,6 +175,9 @@ export default function NotificationSettings() {
               onChange={(e) => saveSettings({ reminderTime: e.target.value })}
               className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
             />
+            {settings.timezone && (
+              <p className="text-xs text-gray-400 mt-1">{settings.timezone}</p>
+            )}
           </div>
 
           {/* Days of week */}

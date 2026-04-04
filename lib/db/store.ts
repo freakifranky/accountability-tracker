@@ -14,7 +14,7 @@ function defaultDb(): DbData {
     checkins: [],
     tasks: [],
     pushSubscriptions: [],
-    notificationSettings: { enabled: false, reminderTime: "09:00", days: [], lastNotifiedDate: null },
+    notificationSettings: { enabled: false, reminderTime: "09:00", days: [], lastNotifiedDate: null, timezone: null },
   };
 }
 

@@ -71,9 +71,10 @@ export interface PushSubscriptionRecord {
 
 export interface NotificationSettings {
   enabled: boolean;
-  reminderTime: string; // "HH:MM"
+  reminderTime: string; // "HH:MM" in user's local timezone
   days: number[]; // 0=Sun…6=Sat, empty=all days
-  lastNotifiedDate: string | null; // "YYYY-MM-DD"
+  lastNotifiedDate: string | null; // "YYYY-MM-DD" in user's local timezone
+  timezone: string | null; // IANA timezone string e.g. "Asia/Bangkok", null = UTC
 }
 
 export interface CreateTaskInput {
