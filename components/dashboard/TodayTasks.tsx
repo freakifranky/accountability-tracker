@@ -25,7 +25,7 @@ export default function TodayTasks({ tasks, goals }: TodayTasksProps) {
     <div className="mb-8">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Tasks</h2>
-        <button onClick={() => setAdding(true)} className="text-xs text-[#e44332] hover:underline font-medium">
+        <button onClick={() => setAdding(true)} className="text-xs text-[#e44332] hover:underline font-medium py-2 px-1 -my-2">
           + Add task
         </button>
       </div>

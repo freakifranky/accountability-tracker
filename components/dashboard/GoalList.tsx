@@ -26,7 +26,7 @@ export default function GoalList({ activeGoals, archivedGoals, taskCountByGoal }
     <div>
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Active Goals</h2>
-        <Link href="/goals/new" className="text-xs text-[#e44332] hover:underline font-medium">+ Add goal</Link>
+        <Link href="/goals/new" className="text-xs text-[#e44332] hover:underline font-medium py-2 px-1 -my-2">+ Add goal</Link>
       </div>
 
       {activeGoals.length === 0 ? (
