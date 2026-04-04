@@ -56,7 +56,7 @@ export default function TodayTasks({ tasks, goals }: TodayTasksProps) {
 
           {adding ? (
             <div className="mt-1">
-              <AddTaskForm defaultDueDate={todayStr} onClose={() => setAdding(false)} />
+              <AddTaskForm defaultDueDate={todayStr} goals={goals} onClose={() => setAdding(false)} />
             </div>
           ) : (
             <button

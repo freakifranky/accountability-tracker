@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { format } from "date-fns";
 import type { Task } from "@/lib/types";
 import TaskItem from "./TaskItem";
 import AddTaskForm from "./AddTaskForm";
@@ -12,6 +13,7 @@ interface GoalTasksSectionProps {
 
 export default function GoalTasksSection({ goalId, tasks }: GoalTasksSectionProps) {
   const [adding, setAdding] = useState(false);
+  const todayStr = format(new Date(), "yyyy-MM-dd");
   const pending = tasks.filter((t) => !t.completed);
   const done = tasks.filter((t) => t.completed);
 
@@ -39,7 +41,7 @@ export default function GoalTasksSection({ goalId, tasks }: GoalTasksSectionProp
 
         {adding ? (
           <div className="py-2">
-            <AddTaskForm goalId={goalId} onClose={() => setAdding(false)} />
+            <AddTaskForm goalId={goalId} defaultDueDate={todayStr} onClose={() => setAdding(false)} />
           </div>
         ) : (
           <button

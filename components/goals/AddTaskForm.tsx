@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Priority, RecurrenceRule } from "@/lib/types";
+import type { Goal, Priority, RecurrenceRule } from "@/lib/types";
 
 interface AddTaskFormProps {
   goalId?: string;
+  goals?: Goal[];        // pass active goals when creating from dashboard (no goalId)
   defaultDueDate?: string;
   onClose?: () => void;
 }
@@ -24,13 +25,19 @@ const RECURRENCE_OPTIONS: { value: RecurrenceRule; label: string }[] = [
   { value: "monthly", label: "Monthly" },
 ];
 
-export default function AddTaskForm({ goalId, defaultDueDate, onClose }: AddTaskFormProps) {
+export default function AddTaskForm({ goalId, goals, defaultDueDate, onClose }: AddTaskFormProps) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState(defaultDueDate ?? "");
   const [priority, setPriority] = useState<Priority>(4);
   const [recurrence, setRecurrence] = useState<RecurrenceRule>("none");
   const [saving, setSaving] = useState(false);
+
+  // When used from dashboard (no goalId), user must pick a goal
+  const activeGoals = goals?.filter((g) => !g.archivedAt) ?? [];
+  const [selectedGoalId, setSelectedGoalId] = useState(activeGoals[0]?.id ?? "");
+
+  const resolvedGoalId = goalId ?? (selectedGoalId || undefined);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -41,7 +48,7 @@ export default function AddTaskForm({ goalId, defaultDueDate, onClose }: AddTask
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: title.trim(),
-        goalId,
+        goalId: resolvedGoalId,
         dueDate: dueDate || undefined,
         priority,
         recurrence,
@@ -66,6 +73,18 @@ export default function AddTaskForm({ goalId, defaultDueDate, onClose }: AddTask
         autoFocus
         className="w-full text-sm text-gray-800 placeholder-gray-400 outline-none"
       />
+      {!goalId && activeGoals.length > 0 && (
+        <select
+          value={selectedGoalId}
+          onChange={(e) => setSelectedGoalId(e.target.value)}
+          className="w-full text-xs text-gray-600 border border-gray-200 rounded px-2 py-1 outline-none focus:border-gray-400 bg-white"
+        >
+          <option value="">— No goal —</option>
+          {activeGoals.map((g) => (
+            <option key={g.id} value={g.id}>{g.name}</option>
+          ))}
+        </select>
+      )}
       <div className="flex items-center gap-2 flex-wrap">
         <input
           type="date"
