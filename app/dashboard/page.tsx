@@ -50,18 +50,22 @@ export default async function DashboardPage() {
 
   const activeGoalIds = new Set(activeGoals.map((g) => g.id));
 
-  // Show ALL pending tasks from active goals on the dashboard (any date or no date).
+  // Show tasks that are actionable today: overdue, due today, or no due date.
+  // Future-dated tasks are excluded so completing a recurring task doesn't
+  // immediately resurface its next occurrence in today's list.
   // Also include today's completed tasks so the user can see what they've done.
-  const tasksDueToday = allTasks.filter((t) =>
-    (t.goalId != null && activeGoalIds.has(t.goalId) && (
-      !t.completed ||
-      (t.completed && t.dueDate === todayStr)  // keep completed-today for display
-    ))
-  );
+  const tasksDueToday = allTasks.filter((t) => {
+    if (!t.goalId || !activeGoalIds.has(t.goalId)) return false;
+    if (t.completed) return t.dueDate === todayStr; // only show completed-today
+    return !t.dueDate || t.dueDate <= todayStr;     // pending: no-date, today, or overdue
+  });
 
-  const completedToday = allTasks.filter((t) => t.completed && t.dueDate === todayStr).length;
+  const completedToday = allTasks.filter((t) =>
+    t.completed && t.dueDate === todayStr && t.goalId != null && activeGoalIds.has(t.goalId)
+  ).length;
   const totalDueToday = allTasks.filter((t) =>
-    !t.completed && t.goalId != null && activeGoalIds.has(t.goalId)
+    !t.completed && t.goalId != null && activeGoalIds.has(t.goalId) &&
+    (!t.dueDate || t.dueDate <= todayStr)
   ).length;
 
   return (

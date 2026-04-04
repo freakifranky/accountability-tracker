@@ -18,9 +18,12 @@ export default function GoalCard({ goal, taskCount, onArchive }: GoalCardProps) 
 
   return (
     <div className={clsx(
-      "bg-white border rounded-xl p-4 transition-all hover:shadow-sm",
+      "relative bg-white border rounded-xl p-4 transition-all hover:shadow-sm",
       isDone ? "border-green-200" : "border-gray-100"
     )}>
+      {/* Full-card link — sits behind interactive elements */}
+      <Link href={`/goals/${goal.id}`} className="absolute inset-0 rounded-xl" aria-label={`Open ${goal.name}`} />
+
       <div className="flex items-start gap-3">
         {/* Check-in status dot */}
         <div className={clsx(
@@ -30,12 +33,7 @@ export default function GoalCard({ goal, taskCount, onArchive }: GoalCardProps) 
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <Link
-              href={`/goals/${goal.id}`}
-              className="font-semibold text-gray-900 hover:text-[#e44332] transition-colors text-sm"
-            >
-              {goal.name}
-            </Link>
+            <span className="font-semibold text-gray-900 text-sm">{goal.name}</span>
             {goal.archivedAt && (
               <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">Archived</span>
             )}
@@ -58,21 +56,16 @@ export default function GoalCard({ goal, taskCount, onArchive }: GoalCardProps) 
         </div>
       </div>
 
-      <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-gray-50">
+      <div className="relative z-10 flex items-center justify-between mt-3 pt-2.5 border-t border-gray-50">
         <span className="text-xs text-gray-300">
           {goal.deadline ? `Due ${format(parseISO(goal.deadline), "MMM d")}` : "No deadline"}
         </span>
-        <div className="flex gap-1">
-          <Link href={`/goals/${goal.id}`} className="text-xs text-gray-400 hover:text-gray-700 transition-colors py-2 px-2 -my-2 rounded-md hover:bg-gray-50">
-            Open
-          </Link>
-          <button
-            onClick={() => onArchive(goal.id)}
-            className="text-xs text-gray-400 hover:text-red-500 transition-colors py-2 px-2 -my-2 rounded-md hover:bg-red-50"
-          >
-            {goal.archivedAt ? "Unarchive" : "Archive"}
-          </button>
-        </div>
+        <button
+          onClick={(e) => { e.preventDefault(); onArchive(goal.id); }}
+          className="text-xs text-gray-400 hover:text-red-500 transition-colors py-2 px-2 -my-2 rounded-md hover:bg-red-50"
+        >
+          {goal.archivedAt ? "Unarchive" : "Archive"}
+        </button>
       </div>
     </div>
   );

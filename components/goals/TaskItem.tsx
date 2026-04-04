@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { format, parseISO, isPast, isToday } from "date-fns";
 import type { Task } from "@/lib/types";
 import PriorityDot from "@/components/ui/PriorityDot";
@@ -59,9 +60,15 @@ export default function TaskItem({ task, showGoal, goalName }: TaskItemProps) {
         </span>
       </button>
       <div className="flex-1 min-w-0">
-        <p className={clsx("text-sm text-gray-800 leading-snug", task.completed && "line-through text-gray-400")}>
-          {task.title}
-        </p>
+        {task.goalId ? (
+          <Link href={`/goals/${task.goalId}`} className={clsx("text-sm text-gray-800 leading-snug hover:text-[#e44332] transition-colors", task.completed && "line-through text-gray-400")}>
+            {task.title}
+          </Link>
+        ) : (
+          <p className={clsx("text-sm text-gray-800 leading-snug", task.completed && "line-through text-gray-400")}>
+            {task.title}
+          </p>
+        )}
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           {task.dueDate && (
             <span className={clsx("text-xs font-medium", isOverdue ? "text-[#e44332]" : isDueToday ? "text-green-600" : "text-gray-400")}>
