@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, subDays } from "date-fns";
 import { getGoalById } from "@/lib/db/goals";
 import { getCheckinsByGoalId } from "@/lib/db/checkins";
 import { getTasksByGoalId } from "@/lib/db/tasks";
+import { getNotificationSettings } from "@/lib/db/push";
 import { calculateStreak } from "@/lib/calculations/streak";
 import { calculateCommitmentRate } from "@/lib/calculations/commitmentRate";
 import CheckInButton from "@/components/goals/CheckInButton";
@@ -11,6 +12,7 @@ import CompletionHeatmap from "@/components/goals/CompletionHeatmap";
 import CheckInHistory from "@/components/goals/CheckInHistory";
 import ProgressBar from "@/components/ui/ProgressBar";
 import GoalTasksSection from "@/components/goals/GoalTasksSection";
+import DailyProgress from "@/components/goals/DailyProgress";
 import DeleteGoalButton from "@/components/goals/DeleteGoalButton";
 
 export default async function GoalDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,15 +20,40 @@ export default async function GoalDetailPage({ params }: { params: Promise<{ id:
   const goal = await getGoalById(id);
   if (!goal) notFound();
 
+  const settings = await getNotificationSettings();
+  const tz = settings.timezone ?? "UTC";
+  let localNow: Date;
+  try {
+    localNow = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
+  } catch {
+    localNow = new Date();
+  }
+
   const checkins = await getCheckinsByGoalId(id);
   const tasks = await getTasksByGoalId(id);
-  const today = new Date();
+  const today = localNow;
   const todayStr = format(today, "yyyy-MM-dd");
   const streak = calculateStreak(checkins, today);
   const commitmentRate = calculateCommitmentRate(checkins, goal.createdAt, today);
   const todayCheckin = checkins.find((c) => c.date === todayStr) ?? null;
   const totalDays = Math.max(1, Math.round((today.getTime() - parseISO(goal.createdAt).getTime()) / 86400000) + 1);
   const completedDays = checkins.filter((c) => c.completed).length;
+
+  // Build last-14-days progress entries
+  const progressEntries = Array.from({ length: 14 }, (_, i) => {
+    const date = subDays(today, i);
+    const dateStr = format(date, "yyyy-MM-dd");
+    const checkin = checkins.find((c) => c.date === dateStr);
+    const tasksCompleted = tasks.filter((t) => {
+      if (!t.completedAt) return false;
+      const localDate = format(
+        new Date(new Date(t.completedAt).toLocaleString("en-US", { timeZone: tz })),
+        "yyyy-MM-dd"
+      );
+      return localDate === dateStr;
+    }).map((t) => t.title);
+    return { date: dateStr, checkedIn: checkin?.completed ?? false, tasksCompleted };
+  });
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-20 sm:pb-6 space-y-6">
@@ -98,6 +125,14 @@ export default async function GoalDetailPage({ params }: { params: Promise<{ id:
 
       {/* Tasks */}
       <GoalTasksSection goalId={goal.id} tasks={tasks} />
+
+      {/* Daily progress */}
+      <div>
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Daily Progress</h2>
+        <div className="bg-white border border-gray-100 rounded-xl px-4">
+          <DailyProgress entries={progressEntries} />
+        </div>
+      </div>
 
       {/* Heatmap */}
       <div>
