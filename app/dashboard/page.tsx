@@ -1,6 +1,7 @@
 import { getAllGoals } from "@/lib/db/goals";
 import { getCheckinsByGoalId } from "@/lib/db/checkins";
 import { getAllTasks } from "@/lib/db/tasks";
+import { getNotificationSettings } from "@/lib/db/push";
 import { calculateStreak } from "@/lib/calculations/streak";
 import { calculateCommitmentRate } from "@/lib/calculations/commitmentRate";
 import { format } from "date-fns";
@@ -12,7 +13,16 @@ import InstallBanner from "@/components/pwa/InstallBanner";
 import NotificationNudge from "@/components/push/NotificationNudge";
 
 export default async function DashboardPage() {
-  const today = new Date();
+  // Use stored timezone so server-side "today" matches the user's local date (not UTC)
+  const settings = await getNotificationSettings();
+  const tz = settings.timezone ?? "UTC";
+  let localNow: Date;
+  try {
+    localNow = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
+  } catch {
+    localNow = new Date();
+  }
+  const today = localNow;
   const todayStr = format(today, "yyyy-MM-dd");
 
   const allGoals = await getAllGoals(true);
@@ -40,20 +50,18 @@ export default async function DashboardPage() {
 
   const activeGoalIds = new Set(activeGoals.map((g) => g.id));
 
-  // Tasks to show on dashboard: today, overdue, and no-date tasks that belong to an active goal
+  // Show ALL pending tasks from active goals on the dashboard (any date or no date).
+  // Also include today's completed tasks so the user can see what they've done.
   const tasksDueToday = allTasks.filter((t) =>
-    t.dueDate === todayStr ||
-    (t.dueDate && t.dueDate < todayStr && !t.completed) ||
-    (!t.dueDate && !t.completed && t.goalId != null && activeGoalIds.has(t.goalId))
+    (t.goalId != null && activeGoalIds.has(t.goalId) && (
+      !t.completed ||
+      (t.completed && t.dueDate === todayStr)  // keep completed-today for display
+    ))
   );
 
   const completedToday = allTasks.filter((t) => t.completed && t.dueDate === todayStr).length;
-  // Count all pending tasks that need attention today: today, overdue, and no-date goal tasks
   const totalDueToday = allTasks.filter((t) =>
-    !t.completed && (
-      (t.dueDate != null && t.dueDate <= todayStr) ||
-      (!t.dueDate && t.goalId != null && activeGoalIds.has(t.goalId))
-    )
+    !t.completed && t.goalId != null && activeGoalIds.has(t.goalId)
   ).length;
 
   return (

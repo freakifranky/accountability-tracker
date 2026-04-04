@@ -17,12 +17,10 @@ export default function TodayTasks({ tasks, goals }: TodayTasksProps) {
   const goalMap = Object.fromEntries(goals.map((g) => [g.id, g.name]));
 
   const overdue = tasks.filter((t) => !t.completed && t.dueDate && t.dueDate < todayStr);
-  const today = tasks.filter((t) => t.dueDate === todayStr);
-  const completed = today.filter((t) => t.completed);
-  const pendingToday = today.filter((t) => !t.completed);
-  // No-date tasks from goals: always show as "today's work" since they're ongoing
-  const noDate = tasks.filter((t) => !t.completed && !t.dueDate);
-  const pending = [...pendingToday, ...noDate];
+  const completedToday = tasks.filter((t) => t.completed && t.dueDate === todayStr);
+  // "Pending" = everything not overdue and not completed: today, future-dated, and no-date
+  const pending = tasks.filter((t) => !t.completed && !(t.dueDate && t.dueDate < todayStr));
+  const completed = completedToday;
 
   return (
     <div className="mb-8">
@@ -45,7 +43,7 @@ export default function TodayTasks({ tasks, goals }: TodayTasksProps) {
 
         <div className="px-4 py-2">
           {pending.length === 0 && !adding ? (
-            <p className="text-sm text-gray-300 py-3 text-center">No tasks due today</p>
+            <p className="text-sm text-gray-300 py-3 text-center">All tasks done — great work!</p>
           ) : (
             <>
               {pending.map((t) => (
@@ -59,7 +57,7 @@ export default function TodayTasks({ tasks, goals }: TodayTasksProps) {
 
           {adding ? (
             <div className="mt-1">
-              <AddTaskForm defaultDueDate={todayStr} onClose={() => setAdding(false)} />
+              <AddTaskForm defaultDueDate={todayStr} goals={goals} onClose={() => setAdding(false)} />
             </div>
           ) : (
             <button
