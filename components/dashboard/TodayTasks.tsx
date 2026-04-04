@@ -19,7 +19,10 @@ export default function TodayTasks({ tasks, goals }: TodayTasksProps) {
   const overdue = tasks.filter((t) => !t.completed && t.dueDate && t.dueDate < todayStr);
   const today = tasks.filter((t) => t.dueDate === todayStr);
   const completed = today.filter((t) => t.completed);
-  const pending = today.filter((t) => !t.completed);
+  const pendingToday = today.filter((t) => !t.completed);
+  // No-date tasks from goals: always show as "today's work" since they're ongoing
+  const noDate = tasks.filter((t) => !t.completed && !t.dueDate);
+  const pending = [...pendingToday, ...noDate];
 
   return (
     <div className="mb-8">
@@ -41,7 +44,7 @@ export default function TodayTasks({ tasks, goals }: TodayTasksProps) {
         )}
 
         <div className="px-4 py-2">
-          {today.length === 0 && !adding ? (
+          {pending.length === 0 && !adding ? (
             <p className="text-sm text-gray-300 py-3 text-center">No tasks due today</p>
           ) : (
             <>
@@ -56,7 +59,7 @@ export default function TodayTasks({ tasks, goals }: TodayTasksProps) {
 
           {adding ? (
             <div className="mt-1">
-              <AddTaskForm defaultDueDate={todayStr} goals={goals} onClose={() => setAdding(false)} />
+              <AddTaskForm defaultDueDate={todayStr} onClose={() => setAdding(false)} />
             </div>
           ) : (
             <button

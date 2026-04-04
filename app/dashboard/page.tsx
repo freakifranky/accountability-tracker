@@ -38,9 +38,23 @@ export default async function DashboardPage() {
     }
   });
 
-  const tasksDueToday = allTasks.filter((t) => t.dueDate === todayStr || (t.dueDate && t.dueDate < todayStr && !t.completed));
-  const completedToday = tasksDueToday.filter((t) => t.completed && t.dueDate === todayStr).length;
-  const totalDueToday = allTasks.filter((t) => t.dueDate === todayStr).length;
+  const activeGoalIds = new Set(activeGoals.map((g) => g.id));
+
+  // Tasks to show on dashboard: today, overdue, and no-date tasks that belong to an active goal
+  const tasksDueToday = allTasks.filter((t) =>
+    t.dueDate === todayStr ||
+    (t.dueDate && t.dueDate < todayStr && !t.completed) ||
+    (!t.dueDate && !t.completed && t.goalId != null && activeGoalIds.has(t.goalId))
+  );
+
+  const completedToday = allTasks.filter((t) => t.completed && t.dueDate === todayStr).length;
+  // Count all pending tasks that need attention today: today, overdue, and no-date goal tasks
+  const totalDueToday = allTasks.filter((t) =>
+    !t.completed && (
+      (t.dueDate != null && t.dueDate <= todayStr) ||
+      (!t.dueDate && t.goalId != null && activeGoalIds.has(t.goalId))
+    )
+  ).length;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-20 sm:pb-6">
