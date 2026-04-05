@@ -21,6 +21,8 @@ const PRIORITY_OPTIONS: { value: Priority; label: string }[] = [
 const RECURRENCE_OPTIONS: { value: RecurrenceRule; label: string }[] = [
   { value: "none", label: "No repeat" },
   { value: "daily", label: "Daily" },
+  { value: "weekdays", label: "Weekdays (Mon–Fri)" },
+  { value: "weekends", label: "Weekends (Sat–Sun)" },
   { value: "weekly", label: "Weekly" },
   { value: "monthly", label: "Monthly" },
 ];

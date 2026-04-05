@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { format, parseISO, subDays, startOfWeek } from "date-fns";
+import { format, parseISO, subDays } from "date-fns";
 import { getGoalById } from "@/lib/db/goals";
+import { normalizeTaskCompletion } from "@/lib/task-utils";
 import { getCheckinsByGoalId } from "@/lib/db/checkins";
 import { getTasksByGoalId } from "@/lib/db/tasks";
 import { getNotificationSettings } from "@/lib/db/push";
@@ -34,30 +35,7 @@ export default async function GoalDetailPage({ params }: { params: Promise<{ id:
   const today = localNow;
   const todayStr = format(today, "yyyy-MM-dd");
 
-  // Normalize recurring task completion: "completed" = completed in current period
-  const tasks = rawTasks.map((t) => {
-    if (t.recurrence === "none") return t;
-    if (!t.completedAt) return { ...t, completed: false };
-    let completedLocalDate: string;
-    try {
-      completedLocalDate = format(
-        new Date(new Date(t.completedAt).toLocaleString("en-US", { timeZone: tz })),
-        "yyyy-MM-dd"
-      );
-    } catch {
-      completedLocalDate = format(new Date(t.completedAt), "yyyy-MM-dd");
-    }
-    let completedForPeriod: boolean;
-    if (t.recurrence === "weekly") {
-      const weekStart = format(startOfWeek(parseISO(todayStr), { weekStartsOn: 1 }), "yyyy-MM-dd");
-      completedForPeriod = completedLocalDate >= weekStart && completedLocalDate <= todayStr;
-    } else if (t.recurrence === "monthly") {
-      completedForPeriod = completedLocalDate.startsWith(todayStr.substring(0, 7));
-    } else {
-      completedForPeriod = completedLocalDate === todayStr;
-    }
-    return { ...t, completed: completedForPeriod };
-  });
+  const tasks = rawTasks.map((t) => normalizeTaskCompletion(t, todayStr, tz));
 
   const streak = calculateStreak(checkins, today);
   const commitmentRate = calculateCommitmentRate(checkins, goal.createdAt, today);

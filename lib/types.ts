@@ -19,7 +19,7 @@ export interface CheckIn {
 
 export type Priority = 1 | 2 | 3 | 4; // 1=urgent, 2=high, 3=medium, 4=none
 
-export type RecurrenceRule = 'none' | 'daily' | 'weekly' | 'monthly';
+export type RecurrenceRule = 'none' | 'daily' | 'weekdays' | 'weekends' | 'weekly' | 'monthly';
 
 export interface Task {
   id: string;

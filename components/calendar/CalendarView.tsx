@@ -4,9 +4,10 @@ import { useState } from "react";
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
   startOfWeek, endOfWeek, isSameMonth, isToday, isSameDay,
-  addMonths, subMonths, parseISO, isPast,
+  addMonths, subMonths,
 } from "date-fns";
 import type { Goal, Task } from "@/lib/types";
+import { isTaskScheduledForDate } from "@/lib/task-utils";
 import clsx from "clsx";
 import TaskItem from "@/components/goals/TaskItem";
 import AddTaskForm from "@/components/goals/AddTaskForm";
@@ -29,13 +30,13 @@ export default function CalendarView({ goals, tasks, checkinMap }: CalendarViewP
   const days = eachDayOfInterval({ start: calStart, end: calEnd });
 
   const selectedStr = format(selectedDate, "yyyy-MM-dd");
-  const tasksForSelected = tasks.filter((t) => t.dueDate === selectedStr);
+  const tasksForSelected = tasks.filter((t) => isTaskScheduledForDate(t, selectedStr));
   const goalMap = Object.fromEntries(goals.map((g) => [g.id, g]));
   const checkedInGoals = (checkinMap[selectedStr] ?? []).map((id) => goalMap[id]).filter(Boolean);
 
   function getDayDots(dateStr: string) {
     const checked = checkinMap[dateStr] ?? [];
-    const hasTasks = tasks.some((t) => t.dueDate === dateStr);
+    const hasTasks = tasks.some((t) => isTaskScheduledForDate(t, dateStr));
     return { checked: checked.length, hasTasks };
   }
 

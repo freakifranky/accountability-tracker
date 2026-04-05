@@ -1,11 +1,24 @@
 import { getAllGoals } from "@/lib/db/goals";
 import { getCheckinsByGoalId } from "@/lib/db/checkins";
 import { getAllTasks } from "@/lib/db/tasks";
+import { getNotificationSettings } from "@/lib/db/push";
 import CalendarView from "@/components/calendar/CalendarView";
+import { format } from "date-fns";
+import { normalizeTaskCompletion } from "@/lib/task-utils";
 
 export default async function CalendarPage() {
   const goals = await getAllGoals(false);
-  const tasks = await getAllTasks();
+  const settings = await getNotificationSettings();
+  const tz = settings.timezone ?? "UTC";
+  let localNow: Date;
+  try {
+    localNow = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
+  } catch {
+    localNow = new Date();
+  }
+  const todayStr = format(localNow, "yyyy-MM-dd");
+  const rawTasks = await getAllTasks();
+  const tasks = rawTasks.map((t) => normalizeTaskCompletion(t, todayStr, tz));
 
   // Build checkin map: date -> goalId[]
   const checkinMap: Record<string, string[]> = {};
