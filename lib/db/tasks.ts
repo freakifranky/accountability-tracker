@@ -1,7 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { format } from "date-fns";
 import { readDb, writeDb } from "./store";
-import { computeNextDueDate } from "../recurrence";
 import type { Task, CreateTaskInput, UpdateTaskInput } from "../types";
 
 export async function getAllTasks(): Promise<Task[]> {
@@ -61,32 +59,17 @@ export async function updateTask(id: string, input: UpdateTaskInput): Promise<Ta
   db.tasks[idx] = {
     ...prev,
     ...input,
+    // Always refresh completedAt when completing so recurring tasks can be
+    // re-completed on a new period (prev.completed may still be true from yesterday).
     completedAt:
-      input.completed === true && !prev.completed
+      input.completed === true
         ? new Date().toISOString()
         : input.completed === false
         ? null
         : prev.completedAt,
   };
   await writeDb(db);
-  const updated = db.tasks[idx];
-
-  // Spawn next occurrence when a recurring task is completed.
-  // Use max(scheduled date, today) as the base so overdue tasks advance
-  // to tomorrow rather than cycling one day at a time from the past.
-  if (input.completed === true && !prev.completed && updated.recurrence !== "none") {
-    const todayStr = format(new Date(), "yyyy-MM-dd");
-    const baseDate = updated.dueDate && updated.dueDate >= todayStr ? updated.dueDate : todayStr;
-    await createTask({
-      goalId: updated.goalId ?? undefined,
-      title: updated.title,
-      priority: updated.priority,
-      recurrence: updated.recurrence,
-      dueDate: computeNextDueDate(baseDate, updated.recurrence),
-    });
-  }
-
-  return updated;
+  return db.tasks[idx];
 }
 
 export async function deleteTask(id: string): Promise<boolean> {

@@ -4,8 +4,8 @@ import { getAllTasks } from "@/lib/db/tasks";
 import { getNotificationSettings } from "@/lib/db/push";
 import { calculateStreak } from "@/lib/calculations/streak";
 import { calculateCommitmentRate } from "@/lib/calculations/commitmentRate";
-import { format } from "date-fns";
-import type { GoalWithStats } from "@/lib/types";
+import { format, parseISO, startOfWeek } from "date-fns";
+import type { GoalWithStats, Task } from "@/lib/types";
 import DashboardStats from "@/components/dashboard/DashboardStats";
 import GoalList from "@/components/dashboard/GoalList";
 import TodayTasks from "@/components/dashboard/TodayTasks";
@@ -25,8 +25,35 @@ export default async function DashboardPage() {
   const today = localNow;
   const todayStr = format(today, "yyyy-MM-dd");
 
+  // For recurring tasks, "completed" means completed in the current period,
+  // derived from completedAt timestamp — not the stored boolean (which never
+  // resets automatically). This lets a daily habit appear fresh each morning.
+  function normalizeTask(t: Task): Task {
+    if (t.recurrence === "none") return t;
+    if (!t.completedAt) return { ...t, completed: false };
+    let completedLocalDate: string;
+    try {
+      completedLocalDate = format(
+        new Date(new Date(t.completedAt).toLocaleString("en-US", { timeZone: tz })),
+        "yyyy-MM-dd"
+      );
+    } catch {
+      completedLocalDate = format(new Date(t.completedAt), "yyyy-MM-dd");
+    }
+    let completedForPeriod: boolean;
+    if (t.recurrence === "weekly") {
+      const weekStart = format(startOfWeek(parseISO(todayStr), { weekStartsOn: 1 }), "yyyy-MM-dd");
+      completedForPeriod = completedLocalDate >= weekStart && completedLocalDate <= todayStr;
+    } else if (t.recurrence === "monthly") {
+      completedForPeriod = completedLocalDate.startsWith(todayStr.substring(0, 7));
+    } else {
+      completedForPeriod = completedLocalDate === todayStr;
+    }
+    return { ...t, completed: completedForPeriod };
+  }
+
   const allGoals = await getAllGoals(true);
-  const allTasks = await getAllTasks();
+  const allTasks = (await getAllTasks()).map(normalizeTask);
 
   const goalsWithStats: GoalWithStats[] = await Promise.all(
     allGoals.map(async (goal) => {
@@ -53,30 +80,22 @@ export default async function DashboardPage() {
   const activeGoalTasksFromActiveGoals = (t: typeof allTasks[number]) =>
     !!(t.goalId && activeGoalIds.has(t.goalId));
 
-  // A task is "actionable today" if:
-  //   - recurring (shows every day regardless of its dueDate — users think of
-  //     dueDate as the goal/deadline date, not the first-occurrence date), OR
-  //   - due today or overdue, OR
-  //   - no due date
-  // Future one-off tasks (non-recurring, dueDate > today) are hidden until their date.
-  const isActionableToday = (t: typeof allTasks[number]) => {
-    if (t.recurrence !== "none") return true;      // recurring: always show
-    if (!t.dueDate) return true;                   // no date: always show
-    return t.dueDate <= todayStr;                  // one-off: today or overdue only
+  // One-off tasks are "actionable today" when: due today, overdue, or no due date.
+  // Future-dated one-offs are hidden until their date arrives.
+  const isOneOffActionableToday = (t: typeof allTasks[number]) => {
+    if (!t.dueDate) return true;
+    return t.dueDate <= todayStr;
   };
 
   const tasksDueToday = allTasks.filter((t) => {
     if (!activeGoalTasksFromActiveGoals(t)) return false;
-    if (t.completed) return t.dueDate === todayStr; // show completed-today only
-    return isActionableToday(t);
+    if (t.recurrence !== "none") return true;             // habits: always in today's list
+    if (t.completed) return t.dueDate === todayStr;       // one-off done: only if today
+    return isOneOffActionableToday(t);                    // one-off pending: today/overdue/no-date
   });
 
-  const completedToday = allTasks.filter((t) =>
-    t.completed && t.dueDate === todayStr && activeGoalTasksFromActiveGoals(t)
-  ).length;
-  const totalDueToday = allTasks.filter((t) =>
-    !t.completed && activeGoalTasksFromActiveGoals(t) && isActionableToday(t)
-  ).length;
+  const completedToday = tasksDueToday.filter((t) => t.completed).length;
+  const totalDueToday = tasksDueToday.filter((t) => !t.completed).length;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-20 sm:pb-6">
