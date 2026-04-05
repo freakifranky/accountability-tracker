@@ -16,11 +16,11 @@ export default function TodayTasks({ tasks, goals }: TodayTasksProps) {
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const goalMap = Object.fromEntries(goals.map((g) => [g.id, g.name]));
 
-  const overdue = tasks.filter((t) => !t.completed && t.dueDate && t.dueDate < todayStr);
-  const completedToday = tasks.filter((t) => t.completed && t.dueDate === todayStr);
-  // "Pending" = everything not overdue and not completed: today, future-dated, and no-date
-  const pending = tasks.filter((t) => !t.completed && !(t.dueDate && t.dueDate < todayStr));
-  const completed = completedToday;
+  // Overdue only applies to non-recurring one-off tasks
+  const overdue = tasks.filter((t) => !t.completed && t.recurrence === "none" && t.dueDate && t.dueDate < todayStr);
+  const pending = tasks.filter((t) => !t.completed && !(t.recurrence === "none" && t.dueDate && t.dueDate < todayStr));
+  // All completed tasks in today's list (recurring or not)
+  const completed = tasks.filter((t) => t.completed);
 
   return (
     <div className="mb-8">
@@ -42,8 +42,10 @@ export default function TodayTasks({ tasks, goals }: TodayTasksProps) {
         )}
 
         <div className="px-4 py-2">
-          {pending.length === 0 && !adding ? (
-            <p className="text-sm text-gray-300 py-3 text-center">All tasks done — great work!</p>
+          {tasks.length === 0 && !adding ? (
+            <p className="text-sm text-gray-300 py-3 text-center">No tasks today — add tasks inside a goal.</p>
+          ) : pending.length === 0 && !adding ? (
+            <p className="text-sm text-green-500 py-3 text-center font-medium">All done today! 🎉</p>
           ) : (
             <>
               {pending.map((t) => (

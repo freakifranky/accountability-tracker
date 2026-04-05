@@ -21,8 +21,8 @@ export default function DashboardStats({ goals, completedToday, totalTasksDueTod
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { value: `${checkedInToday}/${goals.length}`, label: "Goals today", accent: checkedInToday === goals.length && goals.length > 0 },
-          { value: `${completedToday}/${totalTasksDueToday}`, label: "Tasks today", accent: completedToday === totalTasksDueToday && totalTasksDueToday > 0 },
+          { value: goals.length === 0 ? "—" : `${checkedInToday}/${goals.length}`, label: "Goals today", accent: checkedInToday === goals.length && goals.length > 0 },
+          { value: totalTasksDueToday === 0 && completedToday === 0 ? "—" : `${completedToday}/${completedToday + totalTasksDueToday}`, label: "Tasks today", accent: completedToday > 0 && totalTasksDueToday === 0 },
           { value: `${avgRate}%`, label: "Avg. commitment", accent: avgRate >= 75 },
           { value: `${longestStreak} 🔥`, label: "Top streak", accent: longestStreak >= 7 },
         ].map((s) => (

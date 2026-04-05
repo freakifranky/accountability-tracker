@@ -1,6 +1,7 @@
 import { getAllGoals } from "@/lib/db/goals";
 import { getCheckinsByGoalId } from "@/lib/db/checkins";
 import { getAllTasks } from "@/lib/db/tasks";
+import { getNotificationSettings } from "@/lib/db/push";
 import { calculateStreak } from "@/lib/calculations/streak";
 import { calculateCommitmentRate } from "@/lib/calculations/commitmentRate";
 import { format, subDays, eachDayOfInterval } from "date-fns";
@@ -8,7 +9,14 @@ import ProgressView from "@/components/progress/ProgressView";
 import type { GoalWithStats } from "@/lib/types";
 
 export default async function ProgressPage() {
-  const today = new Date();
+  const settings = await getNotificationSettings();
+  const tz = settings.timezone ?? "UTC";
+  let today: Date;
+  try {
+    today = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
+  } catch {
+    today = new Date();
+  }
   const todayStr = format(today, "yyyy-MM-dd");
   const goals = await getAllGoals(false);
   const allTasks = await getAllTasks();

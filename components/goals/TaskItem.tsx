@@ -122,8 +122,8 @@ export default function TaskItem({ task, showGoal, goalName }: TaskItemProps) {
             )}
             {task.recurrence && task.recurrence !== "none" && (
               <span className="text-xs text-gray-400">
-                ↻ {task.recurrence === "custom" && task.recurrenceDays
-                  ? ["Su","M","Tu","W","Th","F","Sa"].filter((_, i) => task.recurrenceDays!.includes(i)).join("/")
+                ↻ {task.recurrence === "custom" && task.recurrenceDays && task.recurrenceDays.length > 0
+                  ? [0,1,2,3,4,5,6].filter(d => task.recurrenceDays!.includes(d)).map(d => ["Su","M","Tu","W","Th","Fr","Sa"][d]).join("/")
                   : task.recurrence}
               </span>
             )}
