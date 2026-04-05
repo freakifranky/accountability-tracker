@@ -50,22 +50,32 @@ export default async function DashboardPage() {
 
   const activeGoalIds = new Set(activeGoals.map((g) => g.id));
 
-  // Show tasks that are actionable today: overdue, due today, or no due date.
-  // Future-dated tasks are excluded so completing a recurring task doesn't
-  // immediately resurface its next occurrence in today's list.
-  // Also include today's completed tasks so the user can see what they've done.
+  const activeGoalTasksFromActiveGoals = (t: typeof allTasks[number]) =>
+    !!(t.goalId && activeGoalIds.has(t.goalId));
+
+  // A task is "actionable today" if:
+  //   - recurring (shows every day regardless of its dueDate — users think of
+  //     dueDate as the goal/deadline date, not the first-occurrence date), OR
+  //   - due today or overdue, OR
+  //   - no due date
+  // Future one-off tasks (non-recurring, dueDate > today) are hidden until their date.
+  const isActionableToday = (t: typeof allTasks[number]) => {
+    if (t.recurrence !== "none") return true;      // recurring: always show
+    if (!t.dueDate) return true;                   // no date: always show
+    return t.dueDate <= todayStr;                  // one-off: today or overdue only
+  };
+
   const tasksDueToday = allTasks.filter((t) => {
-    if (!t.goalId || !activeGoalIds.has(t.goalId)) return false;
-    if (t.completed) return t.dueDate === todayStr; // only show completed-today
-    return !t.dueDate || t.dueDate <= todayStr;     // pending: no-date, today, or overdue
+    if (!activeGoalTasksFromActiveGoals(t)) return false;
+    if (t.completed) return t.dueDate === todayStr; // show completed-today only
+    return isActionableToday(t);
   });
 
   const completedToday = allTasks.filter((t) =>
-    t.completed && t.dueDate === todayStr && t.goalId != null && activeGoalIds.has(t.goalId)
+    t.completed && t.dueDate === todayStr && activeGoalTasksFromActiveGoals(t)
   ).length;
   const totalDueToday = allTasks.filter((t) =>
-    !t.completed && t.goalId != null && activeGoalIds.has(t.goalId) &&
-    (!t.dueDate || t.dueDate <= todayStr)
+    !t.completed && activeGoalTasksFromActiveGoals(t) && isActionableToday(t)
   ).length;
 
   return (
