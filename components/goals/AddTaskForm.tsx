@@ -86,14 +86,13 @@ export default function AddTaskForm({ goalId, goals, defaultDueDate, onClose }: 
         </select>
       )}
       <div className="flex items-center gap-2 flex-wrap">
-        {recurrence === "none" && (
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            className="text-xs text-gray-500 border border-gray-200 rounded px-2 py-1 outline-none focus:border-gray-400"
-          />
-        )}
+        <input
+          type="date"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+          placeholder={recurrence !== "none" ? "Deadline (optional)" : ""}
+          className="text-xs text-gray-500 border border-gray-200 rounded px-2 py-1 outline-none focus:border-gray-400"
+        />
         <select
           value={priority}
           onChange={(e) => setPriority(Number(e.target.value) as Priority)}
@@ -105,11 +104,7 @@ export default function AddTaskForm({ goalId, goals, defaultDueDate, onClose }: 
         </select>
         <select
           value={recurrence}
-          onChange={(e) => {
-            const val = e.target.value as RecurrenceRule;
-            setRecurrence(val);
-            if (val !== "none") setDueDate(""); // habits don't have deadlines
-          }}
+          onChange={(e) => setRecurrence(e.target.value as RecurrenceRule)}
           className="text-xs text-gray-500 border border-gray-200 rounded px-2 py-1 outline-none focus:border-gray-400"
         >
           {RECURRENCE_OPTIONS.map((r) => (
