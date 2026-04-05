@@ -19,17 +19,20 @@ export interface CheckIn {
 
 export type Priority = 1 | 2 | 3 | 4; // 1=urgent, 2=high, 3=medium, 4=none
 
-export type RecurrenceRule = 'none' | 'daily' | 'weekdays' | 'weekends' | 'weekly' | 'monthly';
+export type RecurrenceRule = 'none' | 'daily' | 'weekdays' | 'weekends' | 'weekly' | 'monthly' | 'custom';
 
 export interface Task {
   id: string;
   goalId: string | null; // null = standalone task
   title: string;
-  dueDate: string | null; // YYYY-MM-DD
+  dueDate: string | null; // YYYY-MM-DD (deadline for recurring, due date for one-off)
   priority: Priority;
   recurrence: RecurrenceRule;
+  recurrenceDays: number[] | null; // [0–6] when recurrence === 'custom'; 0=Sun…6=Sat
   completed: boolean;
-  completedAt: string | null; // ISO timestamp
+  completedAt: string | null; // ISO timestamp of last completion
+  completionNote: string | null; // optional one-liner from last check-in
+  completionMood: number | null; // 1–5 mood/energy score from last check-in
   createdAt: string; // ISO timestamp
 }
 
@@ -83,6 +86,7 @@ export interface CreateTaskInput {
   dueDate?: string;
   priority?: Priority;
   recurrence?: RecurrenceRule;
+  recurrenceDays?: number[];
 }
 
 export interface UpdateTaskInput {
@@ -90,5 +94,8 @@ export interface UpdateTaskInput {
   dueDate?: string;
   priority?: Priority;
   recurrence?: RecurrenceRule;
+  recurrenceDays?: number[] | null;
   completed?: boolean;
+  completionNote?: string | null;
+  completionMood?: number | null;
 }

@@ -42,8 +42,11 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
     dueDate: input.dueDate ?? null,
     priority: input.priority ?? 4,
     recurrence: input.recurrence ?? "none",
+    recurrenceDays: input.recurrenceDays && input.recurrenceDays.length > 0 ? input.recurrenceDays : null,
     completed: false,
     completedAt: null,
+    completionNote: null,
+    completionMood: null,
     createdAt: new Date().toISOString(),
   };
   db.tasks.push(task);

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Goal, Priority, RecurrenceRule } from "@/lib/types";
+import clsx from "clsx";
 
 interface AddTaskFormProps {
   goalId?: string;
@@ -25,6 +26,18 @@ const RECURRENCE_OPTIONS: { value: RecurrenceRule; label: string }[] = [
   { value: "weekends", label: "Weekends (Sat–Sun)" },
   { value: "weekly", label: "Weekly" },
   { value: "monthly", label: "Monthly" },
+  { value: "custom", label: "Specific days…" },
+];
+
+// Sun=0 Mon=1 … Sat=6, displayed Mon-first
+const DAY_LABELS = [
+  { day: 1, label: "M" },
+  { day: 2, label: "T" },
+  { day: 3, label: "W" },
+  { day: 4, label: "T" },
+  { day: 5, label: "F" },
+  { day: 6, label: "S" },
+  { day: 0, label: "S" },
 ];
 
 export default function AddTaskForm({ goalId, goals, defaultDueDate, onClose }: AddTaskFormProps) {
@@ -33,17 +46,25 @@ export default function AddTaskForm({ goalId, goals, defaultDueDate, onClose }: 
   const [dueDate, setDueDate] = useState(defaultDueDate ?? "");
   const [priority, setPriority] = useState<Priority>(4);
   const [recurrence, setRecurrence] = useState<RecurrenceRule>("none");
+  const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
 
   const activeGoals = goals?.filter((g) => !g.archivedAt) ?? [];
   const [selectedGoalId, setSelectedGoalId] = useState(activeGoals[0]?.id ?? "");
 
-  // When called from a goal page, goalId is set. From dashboard, use the selector.
   const resolvedGoalId = goalId ?? (selectedGoalId || undefined);
+
+  function toggleDay(day: number) {
+    setRecurrenceDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
+  }
+
+  const isCustomValid = recurrence !== "custom" || recurrenceDays.length > 0;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || !isCustomValid) return;
     setSaving(true);
     await fetch("/api/tasks", {
       method: "POST",
@@ -54,6 +75,7 @@ export default function AddTaskForm({ goalId, goals, defaultDueDate, onClose }: 
         dueDate: dueDate || undefined,
         priority,
         recurrence,
+        recurrenceDays: recurrence === "custom" ? recurrenceDays : undefined,
       }),
     });
     setSaving(false);
@@ -61,6 +83,7 @@ export default function AddTaskForm({ goalId, goals, defaultDueDate, onClose }: 
     setDueDate(defaultDueDate ?? "");
     setPriority(4);
     setRecurrence("none");
+    setRecurrenceDays([]);
     router.refresh();
     onClose?.();
   }
@@ -92,7 +115,6 @@ export default function AddTaskForm({ goalId, goals, defaultDueDate, onClose }: 
           type="date"
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
-          placeholder={recurrence !== "none" ? "Deadline (optional)" : ""}
           className="text-xs text-gray-500 border border-gray-200 rounded px-2 py-1 outline-none focus:border-gray-400"
         />
         <select
@@ -106,7 +128,10 @@ export default function AddTaskForm({ goalId, goals, defaultDueDate, onClose }: 
         </select>
         <select
           value={recurrence}
-          onChange={(e) => setRecurrence(e.target.value as RecurrenceRule)}
+          onChange={(e) => {
+            setRecurrence(e.target.value as RecurrenceRule);
+            setRecurrenceDays([]);
+          }}
           className="text-xs text-gray-500 border border-gray-200 rounded px-2 py-1 outline-none focus:border-gray-400"
         >
           {RECURRENCE_OPTIONS.map((r) => (
@@ -114,10 +139,38 @@ export default function AddTaskForm({ goalId, goals, defaultDueDate, onClose }: 
           ))}
         </select>
       </div>
+
+      {/* Day picker for custom recurrence */}
+      {recurrence === "custom" && (
+        <div className="space-y-1">
+          <p className="text-xs text-gray-400">Repeat on</p>
+          <div className="flex gap-1.5">
+            {DAY_LABELS.map(({ day, label }) => (
+              <button
+                key={day}
+                type="button"
+                onClick={() => toggleDay(day)}
+                className={clsx(
+                  "w-8 h-8 rounded-full text-xs font-medium transition-colors",
+                  recurrenceDays.includes(day)
+                    ? "bg-[#e44332] text-white"
+                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {recurrenceDays.length === 0 && (
+            <p className="text-xs text-[#e44332]">Pick at least one day</p>
+          )}
+        </div>
+      )}
+
       <div className="flex gap-2 pt-1 border-t border-gray-100">
         <button
           type="submit"
-          disabled={saving || !title.trim()}
+          disabled={saving || !title.trim() || !isCustomValid}
           className="bg-[#e44332] text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-[#c0392b] disabled:opacity-50 transition-colors"
         >
           {saving ? "Adding…" : "Add task"}

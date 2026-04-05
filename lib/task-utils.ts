@@ -34,6 +34,11 @@ export function isTaskScheduledForDate(task: Task, dateStr: string): boolean {
       const createdDayOfMonth = new Date(task.createdAt).getDate();
       return parseISO(dateStr).getDate() === createdDayOfMonth;
     }
+    case "custom": {
+      // User-selected specific days (e.g. Mon/Wed/Fri = [1,3,5])
+      if (!task.recurrenceDays || task.recurrenceDays.length === 0) return false;
+      return task.recurrenceDays.includes(day);
+    }
     default:
       return false;
   }
@@ -65,7 +70,7 @@ export function isCompletedForPeriod(task: Task, todayStr: string, tz: string): 
   if (task.recurrence === "monthly") {
     return completedLocalDate.startsWith(todayStr.substring(0, 7));
   }
-  // daily, weekdays, weekends — reset every day
+  // daily, weekdays, weekends, custom — reset every scheduled day
   return completedLocalDate === todayStr;
 }
 
