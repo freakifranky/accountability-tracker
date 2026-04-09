@@ -13,7 +13,12 @@ import TodayTasks from "@/components/dashboard/TodayTasks";
 import InstallBanner from "@/components/pwa/InstallBanner";
 import NotificationNudge from "@/components/push/NotificationNudge";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ action?: string }>;
+}) {
+  const { action } = await searchParams;
   // Use stored timezone so server-side "today" matches the user's local date (not UTC)
   const settings = await getNotificationSettings();
   const tz = settings.timezone ?? "UTC";
@@ -74,8 +79,8 @@ export default async function DashboardPage() {
         completedToday={completedToday}
         totalTasksDueToday={totalDueToday}
       />
-      <TodayTasks tasks={tasksDueToday} goals={allGoals} />
-      <GoalList activeGoals={activeGoals} archivedGoals={archivedGoals} taskCountByGoal={taskCountByGoal} />
+      <TodayTasks tasks={tasksDueToday} goals={allGoals} initialAdding={action === "add-task"} />
+      <GoalList activeGoals={activeGoals} archivedGoals={archivedGoals} taskCountByGoal={taskCountByGoal} highlightCheckin={action === "checkin"} />
     </div>
   );
 }

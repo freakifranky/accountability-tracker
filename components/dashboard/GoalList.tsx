@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { GoalWithStats } from "@/lib/types";
 import GoalCard from "./GoalCard";
@@ -11,11 +11,24 @@ interface GoalListProps {
   activeGoals: GoalWithStats[];
   archivedGoals: GoalWithStats[];
   taskCountByGoal: Record<string, number>;
+  highlightCheckin?: boolean;
 }
 
-export default function GoalList({ activeGoals, archivedGoals, taskCountByGoal }: GoalListProps) {
+export default function GoalList({ activeGoals, archivedGoals, taskCountByGoal, highlightCheckin }: GoalListProps) {
   const router = useRouter();
   const [showArchived, setShowArchived] = useState(false);
+  const [pulse, setPulse] = useState(false);
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!highlightCheckin) return;
+    // Scroll into view and briefly pulse the section to draw attention
+    setTimeout(() => {
+      sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setPulse(true);
+      setTimeout(() => setPulse(false), 1200);
+    }, 300);
+  }, [highlightCheckin]);
 
   async function handleArchive(id: string) {
     await fetch(`/api/goals/${id}/archive`, { method: "POST" });
@@ -23,7 +36,7 @@ export default function GoalList({ activeGoals, archivedGoals, taskCountByGoal }
   }
 
   return (
-    <div>
+    <div ref={sectionRef} className={pulse ? "animate-pulse-once" : ""}>
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Active Goals</h2>
         <Link href="/goals/new" className="text-xs text-[#e44332] hover:underline font-medium py-2 px-1 -my-2">+ Add goal</Link>

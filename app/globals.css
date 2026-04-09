@@ -23,3 +23,15 @@ body {
 .priority-bg-2 { background-color: #fff3e0; }
 .priority-bg-3 { background-color: #e8eeff; }
 .priority-bg-4 { background-color: #f5f5f5; }
+
+@keyframes pulse-once {
+  0%   { opacity: 1; }
+  25%  { opacity: 0.6; }
+  50%  { opacity: 1; }
+  75%  { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+.animate-pulse-once {
+  animation: pulse-once 1.2s ease-in-out;
+}

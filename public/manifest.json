@@ -25,14 +25,14 @@
       "name": "Check in today",
       "short_name": "Check In",
       "description": "Mark today's goals as done",
-      "url": "/dashboard",
+      "url": "/dashboard?action=checkin",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Add task",
       "short_name": "Add Task",
       "description": "Quickly add a new task",
-      "url": "/dashboard",
+      "url": "/dashboard?action=add-task",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {

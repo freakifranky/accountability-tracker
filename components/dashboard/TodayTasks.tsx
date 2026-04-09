@@ -9,10 +9,11 @@ import { format } from "date-fns";
 interface TodayTasksProps {
   tasks: Task[];
   goals: Goal[];
+  initialAdding?: boolean;
 }
 
-export default function TodayTasks({ tasks, goals }: TodayTasksProps) {
-  const [adding, setAdding] = useState(false);
+export default function TodayTasks({ tasks, goals, initialAdding }: TodayTasksProps) {
+  const [adding, setAdding] = useState(initialAdding ?? false);
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const goalMap = Object.fromEntries(goals.map((g) => [g.id, g.name]));
 
