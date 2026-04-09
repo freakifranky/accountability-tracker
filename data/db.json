@@ -38,6 +38,7 @@
     "enabled": true,
     "reminderTime": "06:00",
     "days": [],
-    "lastNotifiedDate": null
+    "lastNotifiedDate": null,
+    "timezone": "Asia/Jakarta"
   }
 }

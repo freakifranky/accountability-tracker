@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
-import { getAllSubscriptions, updateNotificationSettings, getNotificationSettings } from "@/lib/db/push";
+import { getAllSubscriptions, updateNotificationSettings, getNotificationSettings, deleteSubscription } from "@/lib/db/push";
 
 // Only configure VAPID if keys are provided
 const vapidConfigured =
@@ -16,18 +16,12 @@ if (vapidConfigured) {
   );
 }
 
-// Shared send logic — called by both the cron (GET) and the test button (POST)
-async function sendNotifications(): Promise<NextResponse> {
-  if (!vapidConfigured) {
-    return NextResponse.json(
-      { error: "Push notifications not configured. Set VAPID keys in environment variables." },
-      { status: 503 }
-    );
-  }
-
+// Shared send logic — called by both the cron (GET) and the test button (POST).
+// Does NOT update lastNotifiedDate — that is the cron's responsibility only.
+async function sendNotifications(): Promise<{ sent: number; failed: number; expiredEndpoints: string[] }> {
   const subscriptions = await getAllSubscriptions();
   if (subscriptions.length === 0) {
-    return NextResponse.json({ sent: 0, message: "No subscriptions" });
+    return { sent: 0, failed: 0, expiredEndpoints: [] };
   }
 
   const payload = JSON.stringify({
@@ -37,27 +31,27 @@ async function sendNotifications(): Promise<NextResponse> {
   });
 
   const results = await Promise.allSettled(
-    subscriptions.map((record) =>
-      webpush.sendNotification(record.subscription as webpush.PushSubscription, payload)
-    )
+    subscriptions.map(async (record) => {
+      await webpush.sendNotification(record.subscription as webpush.PushSubscription, payload);
+      return record.subscription.endpoint;
+    })
   );
 
   const sent = results.filter((r) => r.status === "fulfilled").length;
   const failed = results.filter((r) => r.status === "rejected").length;
 
-  // Record today's date in the user's local timezone to prevent duplicate sends
-  const settings = await getNotificationSettings();
-  const tz = settings.timezone ?? "UTC";
-  let localDate: Date;
-  try {
-    localDate = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
-  } catch {
-    localDate = new Date();
-  }
-  const todayStr = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, "0")}-${String(localDate.getDate()).padStart(2, "0")}`;
-  await updateNotificationSettings({ lastNotifiedDate: todayStr });
+  // Collect expired/invalid endpoints (410 Gone or 404) to clean up
+  const expiredEndpoints: string[] = [];
+  results.forEach((r, i) => {
+    if (r.status === "rejected") {
+      const err = r.reason as { statusCode?: number };
+      if (err?.statusCode === 410 || err?.statusCode === 404) {
+        expiredEndpoints.push(subscriptions[i].subscription.endpoint);
+      }
+    }
+  });
 
-  return NextResponse.json({ sent, failed });
+  return { sent, failed, expiredEndpoints };
 }
 
 // Vercel Cron fires GET /api/push/notify on schedule
@@ -106,10 +100,40 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ skipped: "already-sent" });
   }
 
-  return sendNotifications();
+  if (!vapidConfigured) {
+    return NextResponse.json(
+      { error: "Push notifications not configured. Set VAPID keys in environment variables." },
+      { status: 503 }
+    );
+  }
+
+  const { sent, failed, expiredEndpoints } = await sendNotifications();
+
+  // Clean up expired subscriptions (410 Gone / 404 Not Found)
+  for (const endpoint of expiredEndpoints) {
+    await deleteSubscription(endpoint);
+    console.log(`[notify] Removed expired subscription: ${endpoint}`);
+  }
+
+  // Mark today as notified only after a successful cron send (not test)
+  await updateNotificationSettings({ lastNotifiedDate: todayStr });
+
+  return NextResponse.json({ sent, failed, expiredRemoved: expiredEndpoints.length });
 }
 
-// Settings page "Send test notification" button → POST bypasses all schedule logic
+// Settings page "Send test notification" button → POST bypasses all schedule logic.
+// Does NOT update lastNotifiedDate so the cron still fires normally that day.
 export async function POST() {
-  return sendNotifications();
+  if (!vapidConfigured) {
+    return NextResponse.json(
+      { error: "Push notifications not configured. Set VAPID keys in environment variables." },
+      { status: 503 }
+    );
+  }
+  const subscriptions = await getAllSubscriptions();
+  if (subscriptions.length === 0) {
+    return NextResponse.json({ sent: 0, message: "No subscriptions" });
+  }
+  const { sent, failed } = await sendNotifications();
+  return NextResponse.json({ sent, failed });
 }
