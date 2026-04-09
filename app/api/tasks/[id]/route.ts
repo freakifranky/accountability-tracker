@@ -11,6 +11,8 @@ function shouldTriggerCheckin(task: Task): boolean {
   return task.recurrence !== "none" || task.dueDate !== null;
 }
 
+const MOOD_EMOJI: Record<number, string> = { 1: "😔", 2: "😐", 3: "🙂", 4: "😄", 5: "🔥" };
+
 // Build the check-in note from all tasks completed today for a goal.
 function buildCheckinNote(tasks: Task[], todayStr: string, tz: string): string | null {
   const completedToday = tasks.filter((t) => {
@@ -22,7 +24,12 @@ function buildCheckinNote(tasks: Task[], todayStr: string, tz: string): string |
     return localDate === todayStr;
   });
   if (completedToday.length === 0) return null;
-  return `Completed: ${completedToday.map((t) => t.title).join(", ")}`;
+  return completedToday.map((t) => {
+    let line = `✓ ${t.title}`;
+    if (t.completionMood) line += ` ${MOOD_EMOJI[t.completionMood]}`;
+    if (t.completionNote) line += ` — ${t.completionNote}`;
+    return line;
+  }).join("\n");
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
-import { getAllSubscriptions, updateNotificationSettings, getNotificationSettings, deleteSubscription } from "@/lib/db/push";
+import {
+  getAllSubscriptions,
+  updateNotificationSettings,
+  getNotificationSettings,
+  deleteSubscription,
+  getAllGoalNotificationSettings,
+  updateGoalNotificationSettings,
+} from "@/lib/db/push";
+import { getAllGoals } from "@/lib/db/goals";
+import type { GoalNotificationSettings } from "@/lib/types";
 
 // Only configure VAPID if keys are provided
 const vapidConfigured =
@@ -16,20 +25,21 @@ if (vapidConfigured) {
   );
 }
 
-// Shared send logic — called by both the cron (GET) and the test button (POST).
-// Does NOT update lastNotifiedDate — that is the cron's responsibility only.
-async function sendNotifications(): Promise<{ sent: number; failed: number; expiredEndpoints: string[] }> {
-  const subscriptions = await getAllSubscriptions();
-  if (subscriptions.length === 0) {
-    return { sent: 0, failed: 0, expiredEndpoints: [] };
+// Resolve which days of week a schedule covers
+function scheduleToDays(settings: GoalNotificationSettings): number[] {
+  switch (settings.schedule) {
+    case "daily":    return [0, 1, 2, 3, 4, 5, 6];
+    case "weekdays": return [1, 2, 3, 4, 5];
+    case "weekends": return [0, 6];
+    case "custom":   return settings.days;
   }
+}
 
-  const payload = JSON.stringify({
-    title: "Time to check in!",
-    body: "How are your goals going today?",
-    url: "/dashboard",
-  });
-
+// Shared send logic for a specific payload
+async function sendPayloadToAll(
+  payload: string,
+  subscriptions: Awaited<ReturnType<typeof getAllSubscriptions>>
+): Promise<{ sent: number; failed: number; expiredEndpoints: string[] }> {
   const results = await Promise.allSettled(
     subscriptions.map(async (record) => {
       await webpush.sendNotification(record.subscription as webpush.PushSubscription, payload);
@@ -40,7 +50,6 @@ async function sendNotifications(): Promise<{ sent: number; failed: number; expi
   const sent = results.filter((r) => r.status === "fulfilled").length;
   const failed = results.filter((r) => r.status === "rejected").length;
 
-  // Collect expired/invalid endpoints (410 Gone or 404) to clean up
   const expiredEndpoints: string[] = [];
   results.forEach((r, i) => {
     if (r.status === "rejected") {
@@ -54,21 +63,18 @@ async function sendNotifications(): Promise<{ sent: number; failed: number; expi
   return { sent, failed, expiredEndpoints };
 }
 
-// Vercel Cron fires GET /api/push/notify on schedule
+// Vercel Cron fires GET /api/push/notify on schedule (every 30 min)
 export async function GET(req: NextRequest) {
-  // 1. Verify cron secret (Vercel sends Authorization: Bearer <CRON_SECRET>)
+  // 1. Verify cron secret
   const auth = req.headers.get("authorization");
   if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 2. Load settings
-  const settings = await getNotificationSettings();
-  if (!settings.enabled) return NextResponse.json({ skipped: "disabled" });
-  if (!settings.reminderTime) return NextResponse.json({ skipped: "no-reminder-time" });
+  // 2. Load global settings for timezone
+  const globalSettings = await getNotificationSettings();
+  const tz = globalSettings.timezone ?? "UTC";
 
-  // 3. Get current time in user's timezone (falls back to UTC on invalid timezone)
-  const tz = settings.timezone ?? "UTC";
   let localDate: Date;
   try {
     localDate = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
@@ -77,28 +83,9 @@ export async function GET(req: NextRequest) {
     localDate = new Date();
   }
 
-  // 4. Day-of-week check (empty days array = every day)
   const todayDow = localDate.getDay();
-  if (settings.days.length > 0 && !settings.days.includes(todayDow)) {
-    return NextResponse.json({ skipped: "wrong-day" });
-  }
-
-  // 5. Time window check: within ±15 min of reminderTime
-  //    Uses min(abs, 1440-abs) to handle midnight wraparound correctly
-  const [hh, mm] = settings.reminderTime.split(":").map(Number);
-  const reminderMinutes = hh * 60 + mm;
   const nowMinutes = localDate.getHours() * 60 + localDate.getMinutes();
-  const diff = Math.min(
-    Math.abs(nowMinutes - reminderMinutes),
-    1440 - Math.abs(nowMinutes - reminderMinutes)
-  );
-  if (diff > 15) return NextResponse.json({ skipped: "outside-window" });
-
-  // 6. Dedup: don't send twice in the same local day
   const todayStr = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, "0")}-${String(localDate.getDate()).padStart(2, "0")}`;
-  if (settings.lastNotifiedDate === todayStr) {
-    return NextResponse.json({ skipped: "already-sent" });
-  }
 
   if (!vapidConfigured) {
     return NextResponse.json(
@@ -107,23 +94,115 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const { sent, failed, expiredEndpoints } = await sendNotifications();
+  const subscriptions = await getAllSubscriptions();
+  if (subscriptions.length === 0) {
+    return NextResponse.json({ skipped: "no-subscriptions" });
+  }
 
-  // Clean up expired subscriptions (410 Gone / 404 Not Found)
-  for (const endpoint of expiredEndpoints) {
+  // 3. Evaluate per-goal notification settings
+  const [allGoalSettings, allGoals] = await Promise.all([
+    getAllGoalNotificationSettings(),
+    getAllGoals(),
+  ]);
+
+  const goalMap = new Map(allGoals.map((g) => [g.id, g]));
+  const settingsMap = new Map(allGoalSettings.map((s) => [s.goalId, s]));
+
+  let totalSent = 0;
+  let totalFailed = 0;
+  const expiredSet = new Set<string>();
+  const notifiedGoals: string[] = [];
+
+  for (const goal of allGoals) {
+    const settings = settingsMap.get(goal.id);
+    if (!settings || !settings.enabled) continue;
+
+    // Day-of-week check
+    const allowedDays = scheduleToDays(settings);
+    if (!allowedDays.includes(todayDow)) continue;
+
+    // Time window check: within ±15 min of reminderTime
+    const [hh, mm] = settings.reminderTime.split(":").map(Number);
+    const reminderMinutes = hh * 60 + mm;
+    const diff = Math.min(
+      Math.abs(nowMinutes - reminderMinutes),
+      1440 - Math.abs(nowMinutes - reminderMinutes)
+    );
+    if (diff > 15) continue;
+
+    // Dedup: don't send twice in the same local day
+    if (settings.lastNotifiedDate === todayStr) continue;
+
+    // Build tailored message
+    const body = settings.message?.trim()
+      ? settings.message
+      : `Don't forget: ${goal.dailyAction}`;
+
+    const payload = JSON.stringify({
+      title: `Check in: ${goal.name}`,
+      body,
+      url: `/goals/${goal.id}`,
+      goalId: goal.id,
+    });
+
+    const { sent, failed, expiredEndpoints } = await sendPayloadToAll(payload, subscriptions);
+    totalSent += sent;
+    totalFailed += failed;
+    expiredEndpoints.forEach((ep) => expiredSet.add(ep));
+
+    if (sent > 0) {
+      await updateGoalNotificationSettings(goal.id, { lastNotifiedDate: todayStr });
+      notifiedGoals.push(goal.name);
+    }
+  }
+
+  // 4. Also check global (legacy) notification settings
+  if (globalSettings.enabled && globalSettings.reminderTime) {
+    const [hh, mm] = globalSettings.reminderTime.split(":").map(Number);
+    const reminderMinutes = hh * 60 + mm;
+    const diff = Math.min(
+      Math.abs(nowMinutes - reminderMinutes),
+      1440 - Math.abs(nowMinutes - reminderMinutes)
+    );
+    const dayOk = globalSettings.days.length === 0 || globalSettings.days.includes(todayDow);
+
+    if (diff <= 15 && dayOk && globalSettings.lastNotifiedDate !== todayStr) {
+      // Only send global notification if no per-goal notifications went out
+      // (to avoid double-notifying users who have set up per-goal reminders)
+      const hasPerGoalReminders = allGoals.some((g) => settingsMap.get(g.id)?.enabled);
+      if (!hasPerGoalReminders) {
+        const payload = JSON.stringify({
+          title: "Time to check in!",
+          body: "How are your goals going today?",
+          url: "/dashboard",
+        });
+        const { sent, failed, expiredEndpoints } = await sendPayloadToAll(payload, subscriptions);
+        totalSent += sent;
+        totalFailed += failed;
+        expiredEndpoints.forEach((ep) => expiredSet.add(ep));
+        if (sent > 0) {
+          await updateNotificationSettings({ lastNotifiedDate: todayStr });
+        }
+      }
+    }
+  }
+
+  // Clean up expired subscriptions
+  for (const endpoint of expiredSet) {
     await deleteSubscription(endpoint);
     console.log(`[notify] Removed expired subscription: ${endpoint}`);
   }
 
-  // Mark today as notified only after a successful cron send (not test)
-  await updateNotificationSettings({ lastNotifiedDate: todayStr });
-
-  return NextResponse.json({ sent, failed, expiredRemoved: expiredEndpoints.length });
+  return NextResponse.json({
+    sent: totalSent,
+    failed: totalFailed,
+    expiredRemoved: expiredSet.size,
+    notifiedGoals,
+  });
 }
 
-// Settings page "Send test notification" button → POST bypasses all schedule logic.
-// Does NOT update lastNotifiedDate so the cron still fires normally that day.
-export async function POST() {
+// Settings page "Send test notification" → POST bypasses schedule logic.
+export async function POST(req: NextRequest) {
   if (!vapidConfigured) {
     return NextResponse.json(
       { error: "Push notifications not configured. Set VAPID keys in environment variables." },
@@ -134,6 +213,41 @@ export async function POST() {
   if (subscriptions.length === 0) {
     return NextResponse.json({ sent: 0, message: "No subscriptions" });
   }
-  const { sent, failed } = await sendNotifications();
+
+  // Optional: test a specific goal notification
+  let body: { goalId?: string } = {};
+  try { body = await req.json(); } catch { /* no body */ }
+
+  let payload: string;
+  if (body.goalId) {
+    const { getGoalById } = await import("@/lib/db/goals");
+    const { getGoalNotificationSettings } = await import("@/lib/db/push");
+    const [goal, settings] = await Promise.all([
+      getGoalById(body.goalId),
+      getGoalNotificationSettings(body.goalId),
+    ]);
+    if (!goal) return NextResponse.json({ error: "Goal not found" }, { status: 404 });
+    const notifBody = settings.message?.trim() ? settings.message : `Don't forget: ${goal.dailyAction}`;
+    payload = JSON.stringify({
+      title: `Check in: ${goal.name}`,
+      body: notifBody,
+      url: `/goals/${goal.id}`,
+      goalId: body.goalId,
+    });
+  } else {
+    payload = JSON.stringify({
+      title: "Time to check in!",
+      body: "How are your goals going today?",
+      url: "/dashboard",
+    });
+  }
+
+  const results = await Promise.allSettled(
+    subscriptions.map((record) =>
+      webpush.sendNotification(record.subscription as webpush.PushSubscription, payload)
+    )
+  );
+  const sent = results.filter((r) => r.status === "fulfilled").length;
+  const failed = results.filter((r) => r.status === "rejected").length;
   return NextResponse.json({ sent, failed });
 }

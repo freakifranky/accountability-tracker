@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
+import PageTransition from "@/components/layout/PageTransition";
 import PushNotificationInit from "@/components/push/PushNotificationInit";
 
 export const metadata: Metadata = {
@@ -24,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-gray-50">
         <Navbar />
         <PushNotificationInit />
-        <main>{children}</main>
+        <main><PageTransition>{children}</PageTransition></main>
       </body>
     </html>
   );

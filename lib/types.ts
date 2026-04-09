@@ -80,6 +80,18 @@ export interface NotificationSettings {
   timezone: string | null; // IANA timezone string e.g. "Asia/Bangkok", null = UTC
 }
 
+export type NotificationSchedule = 'daily' | 'weekdays' | 'weekends' | 'custom';
+
+export interface GoalNotificationSettings {
+  goalId: string;
+  enabled: boolean;
+  reminderTime: string; // "HH:MM" in user's local timezone
+  schedule: NotificationSchedule; // preset
+  days: number[]; // 0=Sun…6=Sat, used when schedule='custom'
+  message: string | null; // null = auto-generated from goal.dailyAction
+  lastNotifiedDate: string | null; // "YYYY-MM-DD" for per-goal dedup
+}
+
 export interface CreateTaskInput {
   goalId?: string;
   title: string;

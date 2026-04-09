@@ -25,7 +25,15 @@ export default function CheckInHistory({ checkins }: CheckInHistoryProps) {
             <span className="font-medium text-gray-700">
               {format(parseISO(c.date), "EEE, MMM d, yyyy")}
             </span>
-            {c.note && <p className="text-gray-500 mt-0.5">{c.note}</p>}
+            {c.note && (
+              <div className="mt-1 space-y-0.5">
+                {c.note.split("\n").map((line, i) => (
+                  <p key={i} className="text-xs text-gray-500 bg-gray-50 rounded px-2 py-1">
+                    {line}
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
         </li>
       ))}

@@ -15,6 +15,7 @@ import ProgressBar from "@/components/ui/ProgressBar";
 import GoalTasksSection from "@/components/goals/GoalTasksSection";
 import DailyProgress from "@/components/goals/DailyProgress";
 import DeleteGoalButton from "@/components/goals/DeleteGoalButton";
+import GoalNotificationSettings from "@/components/goals/GoalNotificationSettings";
 
 export default async function GoalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -153,6 +154,20 @@ export default async function GoalDetailPage({ params }: { params: Promise<{ id:
           <CheckInHistory checkins={checkins} />
         </div>
       </div>
+
+      {/* Notifications */}
+      {!goal.archivedAt && (
+        <div>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Reminder</h2>
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <GoalNotificationSettings
+              goalId={goal.id}
+              goalName={goal.name}
+              dailyAction={goal.dailyAction}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

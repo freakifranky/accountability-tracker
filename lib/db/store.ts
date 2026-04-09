@@ -1,4 +1,4 @@
-import type { Goal, CheckIn, Task, PushSubscriptionRecord, NotificationSettings } from "../types";
+import type { Goal, CheckIn, Task, PushSubscriptionRecord, NotificationSettings, GoalNotificationSettings } from "../types";
 
 export interface DbData {
   goals: Goal[];
@@ -6,6 +6,7 @@ export interface DbData {
   tasks: Task[];
   pushSubscriptions: PushSubscriptionRecord[];
   notificationSettings: NotificationSettings;
+  goalNotificationSettings: GoalNotificationSettings[];
 }
 
 function defaultDb(): DbData {
@@ -15,6 +16,7 @@ function defaultDb(): DbData {
     tasks: [],
     pushSubscriptions: [],
     notificationSettings: { enabled: false, reminderTime: "09:00", days: [], lastNotifiedDate: null, timezone: null },
+    goalNotificationSettings: [],
   };
 }
 
@@ -23,6 +25,8 @@ function migrateData(data: Partial<DbData>): DbData {
   const merged: DbData = { ...base, ...data };
   // Normalize recurrence on old tasks
   merged.tasks = merged.tasks.map((t) => ({ ...t, recurrence: t.recurrence ?? "none" }));
+  // Ensure goalNotificationSettings exists
+  if (!merged.goalNotificationSettings) merged.goalNotificationSettings = [];
   return merged;
 }
 
