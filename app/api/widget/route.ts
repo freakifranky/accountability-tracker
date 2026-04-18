@@ -1,31 +1,34 @@
 import { NextResponse } from "next/server";
-import { getAllGoals } from "@/lib/db/goals";
-import { getCheckinsByGoalId } from "@/lib/db/checkins";
-import { calculateStreak } from "@/lib/calculations/streak";
+import { getAllTasks } from "@/lib/db/tasks";
+import { getNotificationSettings } from "@/lib/db/push";
+import { isTaskScheduledForDate, normalizeTaskCompletion } from "@/lib/task-utils";
 import { format } from "date-fns";
 
 export async function GET() {
-  const today = new Date();
-  const todayStr = format(today, "yyyy-MM-dd");
-  const goals = await getAllGoals(false);
+  const globalSettings = await getNotificationSettings();
+  const tz = globalSettings.timezone ?? "UTC";
 
-  const goalData = await Promise.all(
-    goals.map(async (goal) => {
-      const checkins = await getCheckinsByGoalId(goal.id);
-      const streak = calculateStreak(checkins, today);
-      const completedToday = checkins.some((c) => c.date === todayStr && c.completed);
-      return { id: goal.id, name: goal.name, dailyAction: goal.dailyAction, streak, completedToday };
-    })
-  );
+  let localDate: Date;
+  try {
+    localDate = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
+  } catch {
+    localDate = new Date();
+  }
+  const todayStr = format(localDate, "yyyy-MM-dd");
 
-  const totalStreak = goalData.reduce((sum, g) => sum + g.streak, 0);
-  const todayComplete = goalData.filter((g) => g.completedToday).length;
+  const allTasks = await getAllTasks();
+
+  const todayTasks = allTasks
+    .filter((t) => isTaskScheduledForDate(t, todayStr))
+    .map((t) => normalizeTaskCompletion(t, todayStr, tz))
+    .map((t) => ({ id: t.id, title: t.title, completed: t.completed, priority: t.priority }));
+
+  const completed = todayTasks.filter((t) => t.completed).length;
 
   return NextResponse.json({
-    totalStreak,
-    todayComplete,
-    totalGoals: goals.length,
-    goals: goalData,
+    todayComplete: completed,
+    totalTasks: todayTasks.length,
+    tasks: todayTasks,
     date: todayStr,
   });
 }

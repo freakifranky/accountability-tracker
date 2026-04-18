@@ -18,14 +18,13 @@ class WidgetUpdateService : JobIntentService() {
         val ids = manager.getAppWidgetIds(ComponentName(this, CommitWidgetProvider::class.java))
 
         for (id in ids) {
-            CommitWidgetProvider.updateWidget(
+            CommitWidgetProvider.applyData(
                 context = this,
                 appWidgetManager = manager,
                 appWidgetId = id,
-                totalStreak = data.totalStreak,
                 todayComplete = data.todayComplete,
-                totalGoals = data.totalGoals,
-                goalNames = data.goals
+                totalTasks = data.totalTasks,
+                tasks = data.tasks
             )
         }
     }
@@ -47,29 +46,39 @@ class WidgetUpdateService : JobIntentService() {
                 val body = response.body?.string() ?: return null
                 val json = JSONObject(body)
 
-                val totalStreak = json.getInt("totalStreak")
                 val todayComplete = json.getInt("todayComplete")
-                val totalGoals = json.getInt("totalGoals")
+                val totalTasks = json.getInt("totalTasks")
 
-                val goalsArray = json.getJSONArray("goals")
-                val goals = mutableListOf<Pair<String, Boolean>>()
-                for (i in 0 until goalsArray.length()) {
-                    val g = goalsArray.getJSONObject(i)
-                    goals.add(Pair(g.getString("name"), g.getBoolean("completedToday")))
+                val tasksArray = json.getJSONArray("tasks")
+                val tasks = mutableListOf<TaskItem>()
+                for (i in 0 until tasksArray.length()) {
+                    val t = tasksArray.getJSONObject(i)
+                    tasks.add(TaskItem(
+                        id = t.getString("id"),
+                        title = t.getString("title"),
+                        completed = t.getBoolean("completed"),
+                        priority = t.getInt("priority")
+                    ))
                 }
 
-                WidgetData(totalStreak, todayComplete, totalGoals, goals)
+                WidgetData(todayComplete, totalTasks, tasks)
             }
         } catch (e: Exception) {
             null
         }
     }
 
+    data class TaskItem(
+        val id: String,
+        val title: String,
+        val completed: Boolean,
+        val priority: Int
+    )
+
     data class WidgetData(
-        val totalStreak: Int,
         val todayComplete: Int,
-        val totalGoals: Int,
-        val goals: List<Pair<String, Boolean>>
+        val totalTasks: Int,
+        val tasks: List<TaskItem>
     )
 
     companion object {
