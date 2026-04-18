@@ -63,7 +63,7 @@ async function sendPayloadToAll(
   return { sent, failed, expiredEndpoints };
 }
 
-// Vercel Cron fires GET /api/push/notify on schedule (every 30 min)
+// Vercel Cron fires GET /api/push/notify on schedule (once daily)
 export async function GET(req: NextRequest) {
   // 1. Verify cron secret
   const auth = req.headers.get("authorization");
@@ -84,7 +84,6 @@ export async function GET(req: NextRequest) {
   }
 
   const todayDow = localDate.getDay();
-  const nowMinutes = localDate.getHours() * 60 + localDate.getMinutes();
   const todayStr = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, "0")}-${String(localDate.getDate()).padStart(2, "0")}`;
 
   if (!vapidConfigured) {
@@ -105,7 +104,6 @@ export async function GET(req: NextRequest) {
     getAllGoals(),
   ]);
 
-  const goalMap = new Map(allGoals.map((g) => [g.id, g]));
   const settingsMap = new Map(allGoalSettings.map((s) => [s.goalId, s]));
 
   let totalSent = 0;
@@ -120,15 +118,6 @@ export async function GET(req: NextRequest) {
     // Day-of-week check
     const allowedDays = scheduleToDays(settings);
     if (!allowedDays.includes(todayDow)) continue;
-
-    // Time window check: within ±15 min of reminderTime
-    const [hh, mm] = settings.reminderTime.split(":").map(Number);
-    const reminderMinutes = hh * 60 + mm;
-    const diff = Math.min(
-      Math.abs(nowMinutes - reminderMinutes),
-      1440 - Math.abs(nowMinutes - reminderMinutes)
-    );
-    if (diff > 15) continue;
 
     // Dedup: don't send twice in the same local day
     if (settings.lastNotifiedDate === todayStr) continue;
@@ -158,15 +147,9 @@ export async function GET(req: NextRequest) {
 
   // 4. Also check global (legacy) notification settings
   if (globalSettings.enabled && globalSettings.reminderTime) {
-    const [hh, mm] = globalSettings.reminderTime.split(":").map(Number);
-    const reminderMinutes = hh * 60 + mm;
-    const diff = Math.min(
-      Math.abs(nowMinutes - reminderMinutes),
-      1440 - Math.abs(nowMinutes - reminderMinutes)
-    );
     const dayOk = globalSettings.days.length === 0 || globalSettings.days.includes(todayDow);
 
-    if (diff <= 15 && dayOk && globalSettings.lastNotifiedDate !== todayStr) {
+    if (dayOk && globalSettings.lastNotifiedDate !== todayStr) {
       // Only send global notification if no per-goal notifications went out
       // (to avoid double-notifying users who have set up per-goal reminders)
       const hasPerGoalReminders = allGoals.some((g) => settingsMap.get(g.id)?.enabled);
