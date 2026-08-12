@@ -21,6 +21,9 @@ export type Priority = 1 | 2 | 3 | 4; // 1=urgent, 2=high, 3=medium, 4=none
 
 export type RecurrenceRule = 'none' | 'daily' | 'weekdays' | 'weekends' | 'weekly' | 'monthly' | 'custom';
 
+export type TaskSource = "manual" | "chrome-tab";
+export type TaskContentType = "article" | "video";
+
 export interface Task {
   id: string;
   goalId: string | null; // null = standalone task
@@ -34,6 +37,10 @@ export interface Task {
   completionNote: string | null; // optional one-liner from last check-in
   completionMood: number | null; // 1–5 mood/energy score from last check-in
   createdAt: string; // ISO timestamp
+  source: TaskSource; // "manual" = created via the app UI, "chrome-tab" = auto-captured
+  sourceUrl: string | null; // the captured URL, null for manual tasks
+  sourceId: string | null; // dedup key (normalized URL) — prevents re-capturing the same tab/video twice
+  contentType: TaskContentType | null; // "video" for youtube.com URLs, "article" for everything else captured, null for manual
 }
 
 export interface GoalWithStats extends Goal {
@@ -99,6 +106,10 @@ export interface CreateTaskInput {
   priority?: Priority;
   recurrence?: RecurrenceRule;
   recurrenceDays?: number[];
+  source?: TaskSource; // defaults to "manual"
+  sourceUrl?: string;
+  sourceId?: string;
+  contentType?: TaskContentType;
 }
 
 export interface UpdateTaskInput {

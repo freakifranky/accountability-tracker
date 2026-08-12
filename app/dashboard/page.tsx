@@ -4,12 +4,14 @@ import { getAllTasks } from "@/lib/db/tasks";
 import { getNotificationSettings } from "@/lib/db/push";
 import { calculateStreak } from "@/lib/calculations/streak";
 import { calculateCommitmentRate } from "@/lib/calculations/commitmentRate";
+import { buildCaptureCallout, buildStreakHonestyCheck } from "@/lib/calculations/captureRate";
 import { format } from "date-fns";
 import type { GoalWithStats } from "@/lib/types";
 import { isTaskScheduledForDate, normalizeTaskCompletion } from "@/lib/task-utils";
 import DashboardStats from "@/components/dashboard/DashboardStats";
 import GoalList from "@/components/dashboard/GoalList";
 import TodayTasks from "@/components/dashboard/TodayTasks";
+import CoachCallout from "@/components/dashboard/CoachCallout";
 import InstallBanner from "@/components/pwa/InstallBanner";
 import NotificationNudge from "@/components/push/NotificationNudge";
 
@@ -34,12 +36,22 @@ export default async function DashboardPage({
   const allGoals = await getAllGoals(true);
   const allTasks = (await getAllTasks()).map((t) => normalizeTaskCompletion(t, todayStr, tz));
 
+  const coachMessages: string[] = [];
+
   const goalsWithStats: GoalWithStats[] = await Promise.all(
     allGoals.map(async (goal) => {
       const checkins = await getCheckinsByGoalId(goal.id);
       const streak = calculateStreak(checkins, today);
       const commitmentRate = calculateCommitmentRate(checkins, goal.createdAt, today);
       const todayCheckin = checkins.find((c) => c.date === todayStr) ?? null;
+
+      if (!goal.archivedAt) {
+        const capture = buildCaptureCallout(goal.id, allTasks, today);
+        if (capture.message) coachMessages.push(capture.message);
+        const honesty = buildStreakHonestyCheck(streak, checkins, today);
+        if (honesty.message) coachMessages.push(honesty.message);
+      }
+
       return { ...goal, streak, commitmentRate, todayCheckin };
     })
   );
@@ -79,6 +91,7 @@ export default async function DashboardPage({
         completedToday={completedToday}
         totalTasksDueToday={totalDueToday}
       />
+      <CoachCallout messages={coachMessages} />
       <TodayTasks tasks={tasksDueToday} goals={allGoals} initialAdding={action === "add-task"} />
       <GoalList activeGoals={activeGoals} archivedGoals={archivedGoals} taskCountByGoal={taskCountByGoal} highlightCheckin={action === "checkin"} />
     </div>

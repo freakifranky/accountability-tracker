@@ -6,6 +6,7 @@ import type { GoalWithStats } from "@/lib/types";
 import GoalCard from "./GoalCard";
 import EmptyState from "@/components/ui/EmptyState";
 import Link from "next/link";
+import { apiFetch } from "@/lib/apiFetch";
 
 interface GoalListProps {
   activeGoals: GoalWithStats[];
@@ -31,7 +32,7 @@ export default function GoalList({ activeGoals, archivedGoals, taskCountByGoal, 
   }, [highlightCheckin]);
 
   async function handleArchive(id: string) {
-    await fetch(`/api/goals/${id}/archive`, { method: "POST" });
+    await apiFetch(`/api/goals/${id}/archive`, { method: "POST" });
     router.refresh();
   }
 

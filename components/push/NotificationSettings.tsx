@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { urlBase64ToUint8Array } from "@/lib/push-utils";
 import type { NotificationSettings } from "@/lib/types";
+import { apiFetch } from "@/lib/apiFetch";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -22,13 +23,13 @@ export default function NotificationSettings() {
     if (typeof Notification !== "undefined") {
       setPermission(Notification.permission);
     }
-    fetch("/api/push/settings")
+    apiFetch("/api/push/settings")
       .then((r) => r.json())
       .then((s: NotificationSettings) => {
         // Auto-detect and save timezone if not already set
         const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
         if (detectedTz && !s.timezone) {
-          fetch("/api/push/settings", {
+          apiFetch("/api/push/settings", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ timezone: detectedTz }),
@@ -63,7 +64,7 @@ export default function NotificationSettings() {
         applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
       });
       const json = sub.toJSON();
-      await fetch("/api/push/subscribe", {
+      await apiFetch("/api/push/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -84,7 +85,7 @@ export default function NotificationSettings() {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
-        await fetch("/api/push/subscribe", {
+        await apiFetch("/api/push/subscribe", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ endpoint: sub.endpoint }),
@@ -99,7 +100,7 @@ export default function NotificationSettings() {
   async function saveSettings(patch: Partial<NotificationSettings>) {
     const updated = { ...settings!, ...patch };
     setSettings(updated);
-    await fetch("/api/push/settings", {
+    await apiFetch("/api/push/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
@@ -109,7 +110,7 @@ export default function NotificationSettings() {
   async function sendTest() {
     setTesting(true);
     setTestResult(null);
-    const res = await fetch("/api/push/notify", { method: "POST" });
+    const res = await apiFetch("/api/push/notify", { method: "POST" });
     const data = await res.json();
     if (res.ok) {
       setTestResult(data.sent > 0 ? `Sent! Check for the notification.` : "No active subscription found.");

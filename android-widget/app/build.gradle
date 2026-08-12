@@ -13,6 +13,13 @@ android {
         targetSdk 34
         versionCode 1
         versionName "1.0"
+
+        // Baked in at build time from the API_SHARED_SECRET env var (set by
+        // CI from a GitHub Actions secret, or export it locally before running
+        // ./gradlew). Empty string if unset — every widget request will then
+        // 401, which is the fail-closed behavior we want, not a silent bypass.
+        buildConfigField "String", "API_SHARED_SECRET", "\"${System.getenv('API_SHARED_SECRET') ?: ''}\""
+        buildConfigField "String", "API_BASE_URL", "\"https://accountability-tracker-mu.vercel.app\""
     }
 
     buildTypes {
@@ -28,6 +35,9 @@ android {
     }
     kotlinOptions {
         jvmTarget = '17'
+    }
+    buildFeatures {
+        buildConfig true
     }
 }
 

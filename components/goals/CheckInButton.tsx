@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import type { CheckIn } from "@/lib/types";
+import { apiFetch } from "@/lib/apiFetch";
 
 interface CheckInButtonProps {
   goalId: string;
@@ -22,7 +23,7 @@ export default function CheckInButton({ goalId, todayCheckin }: CheckInButtonPro
 
   async function submit(completed: boolean) {
     setSaving(true);
-    await fetch("/api/checkins", {
+    await apiFetch("/api/checkins", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ goalId, date: todayStr, completed, note: note.trim() || undefined }),

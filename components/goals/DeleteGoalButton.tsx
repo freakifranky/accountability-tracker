@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/apiFetch";
 
 interface DeleteGoalButtonProps {
   goalId: string;
@@ -14,7 +15,7 @@ export default function DeleteGoalButton({ goalId }: DeleteGoalButtonProps) {
 
   async function handleDelete() {
     setDeleting(true);
-    await fetch(`/api/goals/${goalId}`, { method: "DELETE" });
+    await apiFetch(`/api/goals/${goalId}`, { method: "DELETE" });
     router.push("/dashboard");
     router.refresh();
   }

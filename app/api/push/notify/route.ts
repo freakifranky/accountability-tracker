@@ -9,6 +9,11 @@ import {
   updateGoalNotificationSettings,
 } from "@/lib/db/push";
 import { getAllGoals } from "@/lib/db/goals";
+import { getAllTasks } from "@/lib/db/tasks";
+import { getCheckinsByGoalId } from "@/lib/db/checkins";
+import { calculateStreak } from "@/lib/calculations/streak";
+import { buildCaptureCallout, buildStreakHonestyCheck } from "@/lib/calculations/captureRate";
+import { pushDailyQueue } from "@/lib/calendar/pushDailyQueue";
 import type { GoalNotificationSettings } from "@/lib/types";
 
 // Only configure VAPID if keys are provided
@@ -176,11 +181,51 @@ export async function GET(req: NextRequest) {
     console.log(`[notify] Removed expired subscription: ${endpoint}`);
   }
 
+  // Coach callout + Calendar push, consolidated into this same daily cron run
+  // rather than a second cron job (design doc decision — avoids any question of
+  // whether the Vercel plan allows more than one cron entry). Wrapped so a
+  // Calendar API failure never breaks the push-notification flow above —
+  // captured tasks and coach data are already saved regardless of whether the
+  // Calendar write succeeds.
+  const calendarResults: { goal: string; ok: boolean; error?: string }[] = [];
+  const calendarConfigured = !!(
+    process.env.GOOGLE_CLIENT_ID &&
+    process.env.GOOGLE_CLIENT_SECRET &&
+    process.env.GOOGLE_REFRESH_TOKEN
+  );
+
+  if (calendarConfigured) {
+    const allTasksForCoach = await getAllTasks();
+    for (const goal of allGoals) {
+      try {
+        const checkins = await getCheckinsByGoalId(goal.id);
+        const streak = calculateStreak(checkins, localDate);
+        const capture = buildCaptureCallout(goal.id, allTasksForCoach, localDate);
+        const honesty = buildStreakHonestyCheck(streak, checkins, localDate);
+
+        const queueLines = allTasksForCoach
+          .filter((t) => t.goalId === goal.id && t.source === "chrome-tab" && !t.completed)
+          .map((t) => `${t.contentType === "video" ? "Watch" : "Read"}: ${t.title}`);
+
+        if (queueLines.length === 0 && !capture.message && !honesty.message) continue; // nothing to say — no event edit at all
+
+        const coachLine = [capture.message, honesty.message].filter(Boolean).join(" ") || null;
+
+        await pushDailyQueue({ goalName: goal.name, queueLines, coachLine }, tz);
+        calendarResults.push({ goal: goal.name, ok: true });
+      } catch (err) {
+        calendarResults.push({ goal: goal.name, ok: false, error: (err as Error).message });
+        console.error(`[notify] Calendar push failed for goal "${goal.name}":`, err);
+      }
+    }
+  }
+
   return NextResponse.json({
     sent: totalSent,
     failed: totalFailed,
     expiredRemoved: expiredSet.size,
     notifiedGoals,
+    calendar: calendarConfigured ? calendarResults : "not configured",
   });
 }
 

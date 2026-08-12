@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Second Brain — Tab Capture",
+  "version": "1.0.0",
+  "description": "Personal use only. Captures tabs left open 3+ days into your accountability tracker.",
+  "permissions": ["tabs", "alarms", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_page": "options.html",
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
