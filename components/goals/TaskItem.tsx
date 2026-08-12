@@ -6,6 +6,7 @@ import Link from "next/link";
 import { format, parseISO, isPast, isToday } from "date-fns";
 import type { Task } from "@/lib/types";
 import clsx from "clsx";
+import { apiFetch } from "@/lib/apiFetch";
 
 interface TaskItemProps {
   task: Task;
@@ -32,7 +33,7 @@ export default function TaskItem({ task, showGoal, goalName }: TaskItemProps) {
     if (task.completed) {
       // Un-ticking — no form needed
       setLoading(true);
-      await fetch(`/api/tasks/${task.id}`, {
+      await apiFetch(`/api/tasks/${task.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ completed: false }),
@@ -47,7 +48,7 @@ export default function TaskItem({ task, showGoal, goalName }: TaskItemProps) {
 
   async function submitCheckin() {
     setLoading(true);
-    await fetch(`/api/tasks/${task.id}`, {
+    await apiFetch(`/api/tasks/${task.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -65,7 +66,7 @@ export default function TaskItem({ task, showGoal, goalName }: TaskItemProps) {
 
   async function skipCheckin() {
     setLoading(true);
-    await fetch(`/api/tasks/${task.id}`, {
+    await apiFetch(`/api/tasks/${task.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ completed: true }),
@@ -101,7 +102,11 @@ export default function TaskItem({ task, showGoal, goalName }: TaskItemProps) {
               ? "border-blue-400 hover:bg-blue-50"
               : "border-gray-300 hover:bg-gray-100"
           )}>
-            {task.completed && <span className="text-white text-[8px] font-bold">✓</span>}
+            {task.completed ? (
+              <span className="text-white text-[8px] font-bold">✓</span>
+            ) : task.priority === 1 ? (
+              <span className="w-1.5 h-1.5 rounded-full bg-[#e44332]" />
+            ) : null}
           </span>
         </button>
         <div className="flex-1 min-w-0">
@@ -115,6 +120,11 @@ export default function TaskItem({ task, showGoal, goalName }: TaskItemProps) {
             </p>
           )}
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            {task.source === "chrome-tab" && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                {task.contentType === "video" ? "▶ YouTube" : "⧉ Tab"}
+              </span>
+            )}
             {task.dueDate && (
               <span className={clsx("text-xs font-medium", isOverdue ? "text-[#e44332]" : isDueToday ? "text-green-600" : "text-gray-400")}>
                 {isDueToday ? "Today" : isOverdue ? `Overdue · ${format(parseISO(task.dueDate), "MMM d")}` : format(parseISO(task.dueDate), "MMM d")}
@@ -142,7 +152,7 @@ export default function TaskItem({ task, showGoal, goalName }: TaskItemProps) {
           )}
         </div>
         <button
-          onClick={() => fetch(`/api/tasks/${task.id}`, { method: "DELETE" }).then(() => router.refresh())}
+          onClick={() => apiFetch(`/api/tasks/${task.id}`, { method: "DELETE" }).then(() => router.refresh())}
           className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-gray-300 hover:text-red-400 text-sm transition-all px-1"
         >
           ×

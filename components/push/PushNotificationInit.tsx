@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { apiFetch } from "@/lib/apiFetch";
 
 export default function PushNotificationInit() {
   useEffect(() => {
@@ -21,7 +22,7 @@ export default function PushNotificationInit() {
 
       // Update app icon badge with total streak count
       try {
-        const statsRes = await fetch("/api/stats");
+        const statsRes = await apiFetch("/api/stats");
         const stats = await statsRes.json();
         if ("setAppBadge" in navigator && stats.totalStreak > 0) {
           (navigator as Navigator & { setAppBadge: (n: number) => Promise<void> })

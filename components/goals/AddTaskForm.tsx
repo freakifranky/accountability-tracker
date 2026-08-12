@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Goal, Priority, RecurrenceRule } from "@/lib/types";
 import clsx from "clsx";
+import { apiFetch } from "@/lib/apiFetch";
 
 interface AddTaskFormProps {
   goalId?: string;
@@ -66,7 +67,7 @@ export default function AddTaskForm({ goalId, goals, defaultDueDate, onClose }: 
     e.preventDefault();
     if (!title.trim() || !isCustomValid) return;
     setSaving(true);
-    await fetch("/api/tasks", {
+    await apiFetch("/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

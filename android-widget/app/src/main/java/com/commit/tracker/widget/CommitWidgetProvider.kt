@@ -37,11 +37,20 @@ class CommitWidgetProvider : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        if (intent.action == ACTION_REFRESH) {
-            val manager = AppWidgetManager.getInstance(context)
-            val ids = manager.getAppWidgetIds(ComponentName(context, CommitWidgetProvider::class.java))
-            for (id in ids) showLoading(context, manager, id)
-            WidgetUpdateService.enqueueWork(context)
+        when (intent.action) {
+            ACTION_REFRESH -> {
+                val manager = AppWidgetManager.getInstance(context)
+                val ids = manager.getAppWidgetIds(ComponentName(context, CommitWidgetProvider::class.java))
+                for (id in ids) showLoading(context, manager, id)
+                WidgetUpdateService.enqueueWork(context)
+            }
+            ACTION_COMPLETE_TASK_ROW -> {
+                val taskId = intent.getStringExtra(WidgetUpdateService.EXTRA_TASK_ID) ?: return
+                val manager = AppWidgetManager.getInstance(context)
+                val ids = manager.getAppWidgetIds(ComponentName(context, CommitWidgetProvider::class.java))
+                for (id in ids) showLoading(context, manager, id) // immediate feedback, real state lands on refresh
+                WidgetUpdateService.enqueueCompleteTask(context, taskId)
+            }
         }
     }
 
@@ -54,6 +63,14 @@ class CommitWidgetProvider : AppWidgetProvider() {
 
     companion object {
         const val ACTION_REFRESH = "com.commit.tracker.WIDGET_REFRESH"
+        const val ACTION_COMPLETE_TASK_ROW = "com.commit.tracker.WIDGET_COMPLETE_TASK_ROW"
+
+        fun applyError(context: Context, manager: AppWidgetManager, id: Int, message: String) {
+            val layout = pickLayout(manager, id)
+            val views = RemoteViews(context.packageName, layout)
+            views.setTextViewText(R.id.tv_progress, "⚠ $message")
+            manager.updateAppWidget(id, views)
+        }
 
         /** Choose layout based on current widget width in dp */
         fun pickLayout(manager: AppWidgetManager, id: Int): Int {
@@ -105,11 +122,27 @@ class CommitWidgetProvider : AppWidgetProvider() {
                 try {
                     val task = ordered.getOrNull(i)
                     if (task != null) {
-                        val prefix = if (task.completed) "✓ " else "○ "
+                        val prefix = if (task.completed) "✓ " else if (task.priority == 1) "● " else "○ "
                         val color = if (task.completed) 0xFF9CA3AF.toInt() else 0xFF374151.toInt()
                         views.setTextViewText(viewId, "$prefix${task.title}")
                         views.setTextColor(viewId, color)
                         views.setViewVisibility(viewId, View.VISIBLE)
+
+                        // Whole row is tappable — matches the "whole task row,
+                        // not just a small checkbox" decision from design review.
+                        if (!task.completed) {
+                            val completeIntent = Intent(context, CommitWidgetProvider::class.java).apply {
+                                action = ACTION_COMPLETE_TASK_ROW
+                                putExtra(WidgetUpdateService.EXTRA_TASK_ID, task.id)
+                            }
+                            // Unique request code per row so each PendingIntent carries
+                            // its own task id instead of Android reusing a cached one.
+                            val completePending = PendingIntent.getBroadcast(
+                                context, 100 + i, completeIntent,
+                                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                            )
+                            views.setOnClickPendingIntent(viewId, completePending)
+                        }
                     } else {
                         views.setViewVisibility(viewId, View.GONE)
                     }

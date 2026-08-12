@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { GoalNotificationSettings, NotificationSchedule } from "@/lib/types";
+import { apiFetch } from "@/lib/apiFetch";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -29,7 +30,7 @@ export default function GoalNotificationSettings({ goalId, goalName, dailyAction
   const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
   useEffect(() => {
-    fetch(`/api/goals/${goalId}/notification`)
+    apiFetch(`/api/goals/${goalId}/notification`)
       .then((r) => r.json())
       .then((s: GoalNotificationSettings) => setSettings(s));
 
@@ -45,7 +46,7 @@ export default function GoalNotificationSettings({ goalId, goalName, dailyAction
     const updated = { ...settings, ...patch };
     setSettings(updated);
     setSaving(true);
-    await fetch(`/api/goals/${goalId}/notification`, {
+    await apiFetch(`/api/goals/${goalId}/notification`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
@@ -56,7 +57,7 @@ export default function GoalNotificationSettings({ goalId, goalName, dailyAction
   async function sendTest() {
     setTesting(true);
     setTestResult(null);
-    const res = await fetch("/api/push/notify", {
+    const res = await apiFetch("/api/push/notify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ goalId }),
