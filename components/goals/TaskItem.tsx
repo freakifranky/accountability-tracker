@@ -33,13 +33,18 @@ export default function TaskItem({ task, showGoal, goalName }: TaskItemProps) {
     if (task.completed) {
       // Un-ticking — no form needed
       setLoading(true);
-      await apiFetch(`/api/tasks/${task.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completed: false }),
-      });
-      setLoading(false);
-      router.refresh();
+      try {
+        await apiFetch(`/api/tasks/${task.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ completed: false }),
+        });
+        router.refresh();
+      } catch {
+        // apiFetch already surfaced a toast — just stop the spinner below
+      } finally {
+        setLoading(false);
+      }
     } else {
       // Ticking — show the check-in form
       setShowCheckin(true);
@@ -48,34 +53,53 @@ export default function TaskItem({ task, showGoal, goalName }: TaskItemProps) {
 
   async function submitCheckin() {
     setLoading(true);
-    await apiFetch(`/api/tasks/${task.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        completed: true,
-        completionNote: note.trim() || null,
-        completionMood: mood,
-      }),
-    });
-    setShowCheckin(false);
-    setNote("");
-    setMood(null);
-    setLoading(false);
-    router.refresh();
+    try {
+      await apiFetch(`/api/tasks/${task.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          completed: true,
+          completionNote: note.trim() || null,
+          completionMood: mood,
+        }),
+      });
+      setShowCheckin(false);
+      setNote("");
+      setMood(null);
+      router.refresh();
+    } catch {
+      // apiFetch already surfaced a toast — leave the form open so nothing's lost
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function skipCheckin() {
     setLoading(true);
-    await apiFetch(`/api/tasks/${task.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ completed: true }),
-    });
-    setShowCheckin(false);
-    setNote("");
-    setMood(null);
-    setLoading(false);
-    router.refresh();
+    try {
+      await apiFetch(`/api/tasks/${task.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed: true }),
+      });
+      setShowCheckin(false);
+      setNote("");
+      setMood(null);
+      router.refresh();
+    } catch {
+      // apiFetch already surfaced a toast — leave the form open so nothing's lost
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDelete() {
+    try {
+      await apiFetch(`/api/tasks/${task.id}`, { method: "DELETE" });
+      router.refresh();
+    } catch {
+      // apiFetch already surfaced a toast
+    }
   }
 
   const isOverdue = task.dueDate && !task.completed && isPast(parseISO(task.dueDate)) && !isToday(parseISO(task.dueDate));
@@ -152,7 +176,7 @@ export default function TaskItem({ task, showGoal, goalName }: TaskItemProps) {
           )}
         </div>
         <button
-          onClick={() => apiFetch(`/api/tasks/${task.id}`, { method: "DELETE" }).then(() => router.refresh())}
+          onClick={handleDelete}
           className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-gray-300 hover:text-red-400 text-sm transition-all px-1"
         >
           ×

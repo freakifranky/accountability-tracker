@@ -82,3 +82,14 @@ export function normalizeTaskCompletion(task: Task, todayStr: string, tz: string
   if (task.recurrence === "none") return task;
   return { ...task, completed: isCompletedForPeriod(task, todayStr, tz) };
 }
+
+/**
+ * Excludes tasks whose parent goal has been archived. Standalone tasks
+ * (goalId === null) always pass through. Every page that lists tasks (dashboard,
+ * calendar, ...) should filter through this — it used to be reimplemented
+ * ad-hoc per page, and the calendar page was missing it entirely, so archiving
+ * a goal never hid its tasks there.
+ */
+export function filterTasksForActiveGoals(tasks: Task[], activeGoalIds: Set<string>): Task[] {
+  return tasks.filter((t) => t.goalId === null || activeGoalIds.has(t.goalId));
+}

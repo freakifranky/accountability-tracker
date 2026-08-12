@@ -4,7 +4,7 @@ import { getAllTasks } from "@/lib/db/tasks";
 import { getNotificationSettings } from "@/lib/db/push";
 import CalendarView from "@/components/calendar/CalendarView";
 import { format } from "date-fns";
-import { normalizeTaskCompletion } from "@/lib/task-utils";
+import { normalizeTaskCompletion, filterTasksForActiveGoals } from "@/lib/task-utils";
 
 export default async function CalendarPage() {
   const goals = await getAllGoals(false);
@@ -17,8 +17,10 @@ export default async function CalendarPage() {
     localNow = new Date();
   }
   const todayStr = format(localNow, "yyyy-MM-dd");
+  const activeGoalIds = new Set(goals.map((g) => g.id));
   const rawTasks = await getAllTasks();
-  const tasks = rawTasks.map((t) => normalizeTaskCompletion(t, todayStr, tz));
+  const visibleTasks = filterTasksForActiveGoals(rawTasks, activeGoalIds);
+  const tasks = visibleTasks.map((t) => normalizeTaskCompletion(t, todayStr, tz));
 
   // Build checkin map: date -> goalId[]
   const checkinMap: Record<string, string[]> = {};

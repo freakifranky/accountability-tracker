@@ -15,9 +15,15 @@ export default function DeleteGoalButton({ goalId }: DeleteGoalButtonProps) {
 
   async function handleDelete() {
     setDeleting(true);
-    await apiFetch(`/api/goals/${goalId}`, { method: "DELETE" });
-    router.push("/dashboard");
-    router.refresh();
+    try {
+      await apiFetch(`/api/goals/${goalId}`, { method: "DELETE" });
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      // apiFetch already surfaced a toast
+    } finally {
+      setDeleting(false);
+    }
   }
 
   if (confirming) {

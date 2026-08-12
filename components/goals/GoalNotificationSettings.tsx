@@ -32,7 +32,10 @@ export default function GoalNotificationSettings({ goalId, goalName, dailyAction
   useEffect(() => {
     apiFetch(`/api/goals/${goalId}/notification`)
       .then((r) => r.json())
-      .then((s: GoalNotificationSettings) => setSettings(s));
+      .then((s: GoalNotificationSettings) => setSettings(s))
+      .catch(() => {
+        // apiFetch already surfaced a toast — settings stays null, shows "Loading…" below
+      });
 
     if (pushSupported) {
       navigator.serviceWorker.ready.then((reg) =>
@@ -43,30 +46,36 @@ export default function GoalNotificationSettings({ goalId, goalName, dailyAction
 
   async function save(patch: Partial<GoalNotificationSettings>) {
     if (!settings) return;
+    const previous = settings;
     const updated = { ...settings, ...patch };
     setSettings(updated);
     setSaving(true);
-    await apiFetch(`/api/goals/${goalId}/notification`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    });
-    setSaving(false);
+    try {
+      await apiFetch(`/api/goals/${goalId}/notification`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+    } catch {
+      setSettings(previous); // apiFetch already surfaced a toast — roll back the optimistic update
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function sendTest() {
     setTesting(true);
     setTestResult(null);
-    const res = await apiFetch("/api/push/notify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ goalId }),
-    });
-    const data = await res.json();
-    if (res.ok) {
+    try {
+      const res = await apiFetch("/api/push/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goalId }),
+      });
+      const data = await res.json();
       setTestResult(data.sent > 0 ? "Sent! Check for the notification." : "No active subscription found.");
-    } else {
-      setTestResult(data.error ?? "Failed to send.");
+    } catch {
+      // apiFetch already surfaced a toast
     }
     setTesting(false);
   }
