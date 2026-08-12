@@ -32,8 +32,12 @@ export default function GoalList({ activeGoals, archivedGoals, taskCountByGoal, 
   }, [highlightCheckin]);
 
   async function handleArchive(id: string) {
-    await apiFetch(`/api/goals/${id}/archive`, { method: "POST" });
-    router.refresh();
+    try {
+      await apiFetch(`/api/goals/${id}/archive`, { method: "POST" });
+      router.refresh();
+    } catch {
+      // apiFetch already surfaced a toast
+    }
   }
 
   return (

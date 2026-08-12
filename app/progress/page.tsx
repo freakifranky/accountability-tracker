@@ -7,6 +7,7 @@ import { calculateCommitmentRate } from "@/lib/calculations/commitmentRate";
 import { format, subDays, eachDayOfInterval } from "date-fns";
 import ProgressView from "@/components/progress/ProgressView";
 import type { GoalWithStats } from "@/lib/types";
+import { filterTasksForActiveGoals } from "@/lib/task-utils";
 
 export default async function ProgressPage() {
   const settings = await getNotificationSettings();
@@ -19,7 +20,11 @@ export default async function ProgressPage() {
   }
   const todayStr = format(today, "yyyy-MM-dd");
   const goals = await getAllGoals(false);
-  const allTasks = await getAllTasks();
+  const activeGoalIds = new Set(goals.map((g) => g.id));
+  // Without this filter, "tasks completed" / "total tasks" below counts tasks
+  // under archived goals forever — the same bug the calendar page and widget
+  // had, here inflating the lifetime stats instead of hiding a task.
+  const allTasks = filterTasksForActiveGoals(await getAllTasks(), activeGoalIds);
 
   const goalsWithStats: GoalWithStats[] = await Promise.all(
     goals.map(async (goal) => {

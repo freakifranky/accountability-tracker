@@ -23,14 +23,19 @@ export default function CheckInButton({ goalId, todayCheckin }: CheckInButtonPro
 
   async function submit(completed: boolean) {
     setSaving(true);
-    await apiFetch("/api/checkins", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ goalId, date: todayStr, completed, note: note.trim() || undefined }),
-    });
-    setSaving(false);
-    setOpen(false);
-    router.refresh();
+    try {
+      await apiFetch("/api/checkins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goalId, date: todayStr, completed, note: note.trim() || undefined }),
+      });
+      setOpen(false);
+      router.refresh();
+    } catch {
+      // apiFetch already surfaced a toast — leave the form open so the note isn't lost
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (!open) {
