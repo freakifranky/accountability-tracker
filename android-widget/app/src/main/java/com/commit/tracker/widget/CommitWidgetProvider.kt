@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.view.View
 import android.widget.RemoteViews
 import com.commit.tracker.R
 
@@ -57,7 +56,7 @@ class CommitWidgetProvider : AppWidgetProvider() {
     private fun showLoading(context: Context, manager: AppWidgetManager, id: Int) {
         val layout = pickLayout(manager, id)
         val views = RemoteViews(context.packageName, layout)
-        views.setTextViewText(R.id.tv_progress, "Loading…")
+        views.setTextViewText(R.id.tv_hero_task, "Loading…")
         manager.updateAppWidget(id, views)
     }
 
@@ -68,7 +67,7 @@ class CommitWidgetProvider : AppWidgetProvider() {
         fun applyError(context: Context, manager: AppWidgetManager, id: Int, message: String) {
             val layout = pickLayout(manager, id)
             val views = RemoteViews(context.packageName, layout)
-            views.setTextViewText(R.id.tv_progress, "⚠ $message")
+            views.setTextViewText(R.id.tv_hero_task, "⚠ $message")
             manager.updateAppWidget(id, views)
         }
 
@@ -85,80 +84,70 @@ class CommitWidgetProvider : AppWidgetProvider() {
             }
         }
 
+        /**
+         * Action-first widget, redesigned after feedback that the old
+         * multi-row task list was too cramped to read or tap accurately at
+         * widget size. Instead of a list, shows ONE task — the next thing to
+         * do — in large text, with the whole card as the tap target
+         * (Duolingo-style: one clear action, not a mini dashboard). The full
+         * task list still lives in the app; the widget's job is just to get
+         * you started on the next thing.
+         */
         fun applyData(
             context: Context,
             appWidgetManager: AppWidgetManager,
             appWidgetId: Int,
             todayComplete: Int,
             totalTasks: Int,
-            tasks: List<WidgetUpdateService.TaskItem>
+            tasks: List<WidgetUpdateService.TaskItem>,
+            topStreak: Int
         ) {
             val layout = pickLayout(appWidgetManager, appWidgetId)
             val views = RemoteViews(context.packageName, layout)
 
+            // Already sorted pending-first, priority-ascending by /api/widget —
+            // the first pending task is "the next thing to do."
             val pendingTasks = tasks.filter { !it.completed }
-            val doneTasks = tasks.filter { it.completed }
+            val heroTask = pendingTasks.firstOrNull()
+            val remainingAfterHero = (pendingTasks.size - 1).coerceAtLeast(0)
 
-            // Progress text
-            val progressText = when (layout) {
-                R.layout.widget_layout_4x2 -> "$todayComplete / $totalTasks tasks done"
-                R.layout.widget_layout_4x1 -> "$todayComplete / $totalTasks tasks"
-                else -> "$todayComplete / $totalTasks"
-            }
-            views.setTextViewText(R.id.tv_progress, progressText)
+            views.setTextViewText(R.id.tv_streak, "🔥 $topStreak")
 
-            // Fill task rows (pending first, then done)
-            val ordered = pendingTasks + doneTasks
-            val taskIds = listOf(R.id.tv_task1, R.id.tv_task2, R.id.tv_task3, R.id.tv_task4, R.id.tv_task5)
-            val maxRows = when (layout) {
-                R.layout.widget_layout_4x2 -> 5
-                R.layout.widget_layout_3x2 -> 3
-                else -> 0
-            }
-
-            taskIds.forEachIndexed { i, viewId ->
-                // Only set task rows that exist in this layout
-                if (i >= maxRows) return@forEachIndexed
-                try {
-                    val task = ordered.getOrNull(i)
-                    if (task != null) {
-                        val prefix = if (task.completed) "✓ " else if (task.priority == 1) "● " else "○ "
-                        val color = if (task.completed) 0xFF9CA3AF.toInt() else 0xFF374151.toInt()
-                        views.setTextViewText(viewId, "$prefix${task.title}")
-                        views.setTextColor(viewId, color)
-                        views.setViewVisibility(viewId, View.VISIBLE)
-
-                        // Whole row is tappable — matches the "whole task row,
-                        // not just a small checkbox" decision from design review.
-                        if (!task.completed) {
-                            val completeIntent = Intent(context, CommitWidgetProvider::class.java).apply {
-                                action = ACTION_COMPLETE_TASK_ROW
-                                putExtra(WidgetUpdateService.EXTRA_TASK_ID, task.id)
-                            }
-                            // Unique request code per row so each PendingIntent carries
-                            // its own task id instead of Android reusing a cached one.
-                            val completePending = PendingIntent.getBroadcast(
-                                context, 100 + i, completeIntent,
-                                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                            )
-                            views.setOnClickPendingIntent(viewId, completePending)
-                        }
-                    } else {
-                        views.setViewVisibility(viewId, View.GONE)
+            when {
+                heroTask != null -> {
+                    val prefix = if (heroTask.priority == 1) "● " else ""
+                    views.setTextViewText(R.id.tv_hero_task, "$prefix${heroTask.title}")
+                    setStatusText(
+                        views, layout,
+                        if (remainingAfterHero > 0) "+$remainingAfterHero more today" else "Tap to complete"
+                    )
+                    // Whole card completes this task — the primary action.
+                    val completeIntent = Intent(context, CommitWidgetProvider::class.java).apply {
+                        action = ACTION_COMPLETE_TASK_ROW
+                        putExtra(WidgetUpdateService.EXTRA_TASK_ID, heroTask.id)
                     }
-                } catch (_: Exception) { /* view doesn't exist in this layout */ }
+                    val completePending = PendingIntent.getBroadcast(
+                        context, appWidgetId, completeIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    views.setOnClickPendingIntent(R.id.widget_root, completePending)
+                }
+                totalTasks > 0 -> {
+                    // Everything scheduled today is done — celebratory state, not
+                    // another empty "0/0" that could read as nothing happening.
+                    views.setTextViewText(R.id.tv_hero_task, "✓ All done for today")
+                    setStatusText(views, layout, "Nice work — $todayComplete/$totalTasks complete")
+                    setOpenAppTap(context, views, appWidgetId)
+                }
+                else -> {
+                    views.setTextViewText(R.id.tv_hero_task, "Nothing due today")
+                    setStatusText(views, layout, "Open the app to add something")
+                    setOpenAppTap(context, views, appWidgetId)
+                }
             }
 
-            // Check in button → opens dashboard
-            val openIntent = Intent(Intent.ACTION_VIEW,
-                Uri.parse("https://accountability-tracker-mu.vercel.app/dashboard"))
-            val openPending = PendingIntent.getActivity(
-                context, 0, openIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            views.setOnClickPendingIntent(R.id.btn_checkin, openPending)
-
-            // Refresh button
+            // Refresh — its own tap target, takes priority over the root's
+            // click when tapped directly (standard RemoteViews behavior).
             val refreshIntent = Intent(context, CommitWidgetProvider::class.java).apply {
                 action = ACTION_REFRESH
             }
@@ -169,6 +158,21 @@ class CommitWidgetProvider : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.btn_refresh, refreshPending)
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
+        }
+
+        // tv_status doesn't exist on the 4x1 (single-row) layout — no room for it.
+        private fun setStatusText(views: RemoteViews, layout: Int, text: String) {
+            if (layout == R.layout.widget_layout_4x1) return
+            views.setTextViewText(R.id.tv_status, text)
+        }
+
+        private fun setOpenAppTap(context: Context, views: RemoteViews, appWidgetId: Int) {
+            val openIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://accountability-tracker-mu.vercel.app/dashboard"))
+            val openPending = PendingIntent.getActivity(
+                context, appWidgetId, openIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            views.setOnClickPendingIntent(R.id.widget_root, openPending)
         }
     }
 }

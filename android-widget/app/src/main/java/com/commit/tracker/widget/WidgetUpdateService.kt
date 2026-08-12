@@ -33,7 +33,8 @@ class WidgetUpdateService : JobIntentService() {
                     appWidgetId = id,
                     todayComplete = result.data.todayComplete,
                     totalTasks = result.data.totalTasks,
-                    tasks = result.data.tasks
+                    tasks = result.data.tasks,
+                    topStreak = result.data.topStreak
                 )
             }
             is FetchResult.Error -> for (id in ids) {
@@ -74,6 +75,7 @@ class WidgetUpdateService : JobIntentService() {
 
                 val todayComplete = json.getInt("todayComplete")
                 val totalTasks = json.getInt("totalTasks")
+                val topStreak = json.optInt("topStreak", 0)
 
                 val tasksArray = json.getJSONArray("tasks")
                 val tasks = mutableListOf<TaskItem>()
@@ -87,7 +89,7 @@ class WidgetUpdateService : JobIntentService() {
                     ))
                 }
 
-                FetchResult.Success(WidgetData(todayComplete, totalTasks, tasks))
+                FetchResult.Success(WidgetData(todayComplete, totalTasks, tasks, topStreak))
             }
         } catch (e: Exception) {
             FetchResult.Error("Connection failed: ${e.message ?: e.javaClass.simpleName}")
@@ -134,7 +136,8 @@ class WidgetUpdateService : JobIntentService() {
     data class WidgetData(
         val todayComplete: Int,
         val totalTasks: Int,
-        val tasks: List<TaskItem>
+        val tasks: List<TaskItem>,
+        val topStreak: Int
     )
 
     companion object {
