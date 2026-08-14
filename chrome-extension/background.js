@@ -1,5 +1,7 @@
 const SCAN_ALARM = "tab-capture-scan";
-const OPEN_THRESHOLD_MS = 3 * 24 * 60 * 60 * 1000; // 3 days, matches the design doc's threshold
+const HISTORY_WINDOW_DAYS = 14; // how far back to look for visits at all
+const REVISIT_SPAN_MS = 3 * 24 * 60 * 60 * 1000; // first-to-last visit must span 3+ days, matches the original open-tab threshold
+const MIN_VISIT_COUNT = 2; // a single click-through doesn't count as "still nagging you"
 const SCAN_INTERVAL_MINUTES = 60 * 6; // every 6 hours
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -7,46 +9,26 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === SCAN_ALARM) scanTabs();
+  if (alarm.name === SCAN_ALARM) scanHistory();
 });
 
 chrome.runtime.onMessage.addListener((message) => {
-  if (message?.type === "scan-now") scanTabs();
+  if (message?.type === "scan-now") scanHistory();
 });
 
-// chrome.tabs doesn't expose "how long has this tab been open" directly —
-// track first-seen timestamps ourselves so the 3-day threshold is measurable.
-async function trackOpenTabs() {
-  const tabs = await chrome.tabs.query({});
-  const { firstSeen = {} } = await chrome.storage.local.get("firstSeen");
-  const now = Date.now();
-  let changed = false;
-  const seenTabIds = new Set();
-
-  for (const tab of tabs) {
-    if (!tab.id || !tab.url) continue;
-    seenTabIds.add(String(tab.id));
-    if (!firstSeen[tab.id]) {
-      firstSeen[tab.id] = now;
-      changed = true;
-    }
-  }
-
-  // Prune tabs that no longer exist so the map doesn't grow forever.
-  for (const tabId of Object.keys(firstSeen)) {
-    if (!seenTabIds.has(tabId)) {
-      delete firstSeen[tabId];
-      changed = true;
-    }
-  }
-
-  if (changed) await chrome.storage.local.set({ firstSeen });
-  return firstSeen;
+// A page counts as "still nagging you" if you've come back to it 2+ times,
+// spread across at least REVISIT_SPAN_MS — reading something once and moving
+// on doesn't qualify, only genuine repeat engagement without ever finishing it.
+async function isRevisitedAcrossSpan(url) {
+  const visits = await chrome.history.getVisits({ url });
+  if (visits.length < MIN_VISIT_COUNT) return false;
+  const times = visits.map((v) => v.visitTime).sort((a, b) => a - b);
+  return times[times.length - 1] - times[0] >= REVISIT_SPAN_MS;
 }
 
 // Mirrors lib/capture/normalizeUrl.ts closely enough for local dedup
 // bookkeeping. The server does the authoritative dedup by sourceId — this is
-// just to avoid re-POSTing the same still-open tab on every 6-hour scan.
+// just to avoid re-POSTing the same page every 6-hour scan.
 function normalizeUrlLocally(rawUrl) {
   try {
     const url = new URL(rawUrl);
@@ -62,7 +44,7 @@ function normalizeUrlLocally(rawUrl) {
   }
 }
 
-async function scanTabs() {
+async function scanHistory() {
   const { apiBaseUrl, apiSecret } = await chrome.storage.local.get(["apiBaseUrl", "apiSecret"]);
   if (!apiBaseUrl || !apiSecret) {
     await chrome.storage.local.set({
@@ -72,25 +54,28 @@ async function scanTabs() {
     return;
   }
 
-  const firstSeen = await trackOpenTabs();
   const { submittedSourceIds = [] } = await chrome.storage.local.get("submittedSourceIds");
   const submitted = new Set(submittedSourceIds);
 
-  const tabs = await chrome.tabs.query({});
   const now = Date.now();
+  const items = await chrome.history.search({
+    text: "",
+    startTime: now - HISTORY_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+    maxResults: 1000,
+  });
+
   const candidates = [];
+  for (const item of items) {
+    if (!item.url || !item.title) continue;
+    if (!item.url.startsWith("http")) continue; // skip chrome://, extension pages, etc.
+    if ((item.visitCount ?? 0) < MIN_VISIT_COUNT) continue; // cheap filter before the getVisits() call below
 
-  for (const tab of tabs) {
-    if (!tab.id || !tab.url || !tab.title) continue;
-    if (!tab.url.startsWith("http")) continue; // skip chrome://, extension pages, etc.
+    const sourceId = normalizeUrlLocally(item.url);
+    if (submitted.has(sourceId)) continue; // already sent — don't resend the same page every scan
 
-    const age = now - (firstSeen[tab.id] ?? now);
-    if (age < OPEN_THRESHOLD_MS) continue;
+    if (!(await isRevisitedAcrossSpan(item.url))) continue;
 
-    const sourceId = normalizeUrlLocally(tab.url);
-    if (submitted.has(sourceId)) continue; // already sent — don't resend every scan while the tab stays open
-
-    candidates.push({ title: tab.title, url: tab.url });
+    candidates.push({ title: item.title, url: item.url });
     submitted.add(sourceId);
   }
 

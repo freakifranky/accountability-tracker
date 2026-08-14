@@ -1,6 +1,6 @@
-# Tab Capture (personal use only)
+# History Capture (personal use only)
 
-Scans your open Chrome tabs every 6 hours, flags anything open 3+ days, classifies it against your active goals, and sends matches to your accountability tracker. Not published to the Chrome Web Store — install unpacked, for your own use only.
+Scans your browsing history every 6 hours, flags pages you've revisited 2+ times spanning 3+ days, classifies them against your active goals, and sends matches to your accountability tracker. Not published to the Chrome Web Store — install unpacked, for your own use only.
 
 ## Install
 
@@ -14,13 +14,13 @@ Scans your open Chrome tabs every 6 hours, flags anything open 3+ days, classifi
 ## How it works
 
 - Runs a scan every 6 hours (`chrome.alarms`), plus you can trigger one manually from the popup ("Scan now")
-- Tracks when each tab was first seen (Chrome doesn't expose this natively) so it can tell which tabs have been open 3+ days
-- Sends `{ title, url }` for qualifying tabs to `POST {tracker URL}/api/capture` with your secret as a Bearer token
-- The tracker classifies each item against your active goals (keyword match) and discards anything that doesn't match — nothing gets captured just because a tab sat open
-- Tracks which URLs it's already sent locally, so it won't resend the same still-open tab on every scan
+- Searches `chrome.history` for pages visited in the last 14 days, then checks each candidate's full visit timeline (`chrome.history.getVisits`) for at least 2 visits spanning 3+ days — a page you read once and moved on from doesn't qualify, only genuine repeat engagement
+- Sends `{ title, url }` for qualifying pages to `POST {tracker URL}/api/capture` with your secret as a Bearer token
+- The tracker classifies each item against your active goals (keyword match) and discards anything that doesn't match — nothing gets captured just because you revisited a page
+- Tracks which URLs it's already sent locally, so it won't resend the same page on every scan
 
 ## What it does NOT do
 
-- Doesn't read tab content, only title + URL
-- Doesn't touch tabs open less than 3 days
+- Doesn't read page content, only title + URL
+- Doesn't touch pages visited once, or pages first-to-last visited within 3 days
 - Doesn't publish anywhere — this is a personal, unpacked install only
