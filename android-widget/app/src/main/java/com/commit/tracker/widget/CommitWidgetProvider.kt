@@ -186,10 +186,10 @@ class CommitWidgetProvider : AppWidgetProvider() {
                 // Everything scheduled today is done — celebratory state, not
                 // another empty "0/0" that could read as nothing happening.
                 views.setTextViewText(R.id.tv_hero_task, "✓ All done for today")
-                setOpenAppTap(context, views, appWidgetId)
+                setOpenAppTap(context, views, appWidgetId, R.id.widget_root)
             } else {
                 views.setTextViewText(R.id.tv_hero_task, "Nothing due today")
-                setOpenAppTap(context, views, appWidgetId)
+                setOpenAppTap(context, views, appWidgetId, R.id.widget_root)
             }
         }
 
@@ -220,15 +220,21 @@ class CommitWidgetProvider : AppWidgetProvider() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
             )
             views.setPendingIntentTemplate(R.id.lv_tasks, rowTapPending)
+
+            // Row taps and the refresh button are both already spoken for, so
+            // the "Commit" wordmark in the header is the way into the full app
+            // from this layout — otherwise there's no path back to it at all
+            // once the list has items in it.
+            setOpenAppTap(context, views, appWidgetId, R.id.tv_app_name)
         }
 
-        private fun setOpenAppTap(context: Context, views: RemoteViews, appWidgetId: Int) {
+        private fun setOpenAppTap(context: Context, views: RemoteViews, appWidgetId: Int, targetViewId: Int) {
             val openIntent = Intent(Intent.ACTION_VIEW, Uri.parse(OPEN_APP_URL))
             val openPending = PendingIntent.getActivity(
                 context, appWidgetId, openIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            views.setOnClickPendingIntent(R.id.widget_root, openPending)
+            views.setOnClickPendingIntent(targetViewId, openPending)
         }
     }
 }
