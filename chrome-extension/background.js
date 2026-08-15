@@ -1,11 +1,16 @@
 const SCAN_ALARM = "tab-capture-scan";
-const HISTORY_WINDOW_DAYS = 14; // how far back to look for visits at all
-const REVISIT_SPAN_MS = 3 * 24 * 60 * 60 * 1000; // first-to-last visit must span 3+ days, matches the original open-tab threshold
-const MIN_VISIT_COUNT = 2; // a single click-through doesn't count as "still nagging you"
 const SCAN_INTERVAL_MINUTES = 60 * 6; // every 6 hours
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
   chrome.alarms.create(SCAN_ALARM, { periodInMinutes: SCAN_INTERVAL_MINUTES });
+  // Cursor-based capture only looks forward from here — set it once, on the
+  // very first install/update after this code shipped, so the existing history
+  // backlog never gets swept in as a single flood. Guarded so re-running this
+  // listener on a later update doesn't reset an already-advancing cursor.
+  const { lastScanCursor } = await chrome.storage.local.get("lastScanCursor");
+  if (!lastScanCursor) {
+    await chrome.storage.local.set({ lastScanCursor: Date.now() });
+  }
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -15,16 +20,6 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === "scan-now") scanHistory();
 });
-
-// A page counts as "still nagging you" if you've come back to it 2+ times,
-// spread across at least REVISIT_SPAN_MS — reading something once and moving
-// on doesn't qualify, only genuine repeat engagement without ever finishing it.
-async function isRevisitedAcrossSpan(url) {
-  const visits = await chrome.history.getVisits({ url });
-  if (visits.length < MIN_VISIT_COUNT) return false;
-  const times = visits.map((v) => v.visitTime).sort((a, b) => a - b);
-  return times[times.length - 1] - times[0] >= REVISIT_SPAN_MS;
-}
 
 // Mirrors lib/capture/normalizeUrl.ts closely enough for local dedup
 // bookkeeping. The server does the authoritative dedup by sourceId — this is
@@ -74,9 +69,14 @@ async function scanHistory() {
   const submitted = new Set(submittedSourceIds);
 
   const now = Date.now();
+  // lastScanCursor is the forward-only high-water mark: only visits after it
+  // get considered, so a page you visit even once shows up, but the existing
+  // history backlog from before this cursor existed never floods in at once.
+  const { lastScanCursor = now } = await chrome.storage.local.get("lastScanCursor");
+
   const items = await chrome.history.search({
     text: "",
-    startTime: now - HISTORY_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+    startTime: lastScanCursor,
     maxResults: 1000,
   });
 
@@ -84,19 +84,16 @@ async function scanHistory() {
   for (const item of items) {
     if (!item.url || !item.title) continue;
     if (!item.url.startsWith("http")) continue; // skip chrome://, extension pages, etc.
-    if ((item.visitCount ?? 0) < MIN_VISIT_COUNT) continue; // cheap filter before the getVisits() call below
 
     const sourceId = normalizeUrlLocally(item.url);
     if (submitted.has(sourceId)) continue; // already sent — don't resend the same page every scan
-
-    if (!(await isRevisitedAcrossSpan(item.url))) continue;
 
     candidates.push({ title: item.title, url: item.url });
     submitted.add(sourceId);
   }
 
   if (candidates.length === 0) {
-    await chrome.storage.local.set({ lastScanAt: now, lastScanResult: "Nothing new to capture." });
+    await chrome.storage.local.set({ lastScanAt: now, lastScanCursor: now, lastScanResult: "Nothing new to capture." });
     return;
   }
 
@@ -115,6 +112,7 @@ async function scanHistory() {
       await chrome.storage.local.set({
         submittedSourceIds: Array.from(submitted),
         lastScanAt: now,
+        lastScanCursor: now,
         lastScanResult: `Captured ${data.created} item${data.created === 1 ? "" : "s"} (${data.matched} matched a goal, ${data.unsorted} unsorted, ${data.duplicates} already captured).`,
       });
     } else {
@@ -122,7 +120,7 @@ async function scanHistory() {
         lastScanAt: now,
         lastScanResult: `Capture failed: ${res.status} ${res.statusText}. Check your secret in Settings.`,
       });
-      // Don't persist submittedSourceIds on failure — retry these on the next scan.
+      // Don't advance lastScanCursor or persist submittedSourceIds on failure — retry the same window next time.
     }
   } catch (err) {
     await chrome.storage.local.set({
