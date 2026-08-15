@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { format } from "date-fns";
 import { getTaskById, updateTask, deleteTask, getTasksByGoalId } from "@/lib/db/tasks";
+import { getGoalById } from "@/lib/db/goals";
 import { upsertCheckin } from "@/lib/db/checkins";
 import { getNotificationSettings } from "@/lib/db/push";
 import type { Task } from "@/lib/types";
@@ -42,6 +43,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await request.json();
+
+  // goalId is the one field here worth validating explicitly — a bad id would
+  // silently orphan the task under a goal that doesn't exist.
+  if ("goalId" in body && body.goalId !== null) {
+    const goal = await getGoalById(body.goalId);
+    if (!goal) return NextResponse.json({ error: "Goal not found" }, { status: 400 });
+  }
+
   const updated = await updateTask(id, body);
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
