@@ -3,6 +3,7 @@ import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import PageTransition from "@/components/layout/PageTransition";
 import PushNotificationInit from "@/components/push/PushNotificationInit";
+import ErrorToast from "@/components/ui/ErrorToast";
 
 export const metadata: Metadata = {
   title: "Commit — Accountability Tracker",
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-gray-50">
         <Navbar />
         <PushNotificationInit />
+        <ErrorToast />
         <main><PageTransition>{children}</PageTransition></main>
       </body>
     </html>

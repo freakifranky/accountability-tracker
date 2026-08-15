@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Second Brain — Tab Capture",
+  "name": "Second Brain — History Capture",
   "version": "1.0.0",
-  "description": "Personal use only. Captures tabs left open 3+ days into your accountability tracker.",
-  "permissions": ["tabs", "alarms", "storage"],
+  "description": "Personal use only. Captures pages you visit into your accountability tracker (starting from install — no history backlog).",
+  "permissions": ["history", "alarms", "storage"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"

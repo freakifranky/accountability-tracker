@@ -67,26 +67,31 @@ export default function AddTaskForm({ goalId, goals, defaultDueDate, onClose }: 
     e.preventDefault();
     if (!title.trim() || !isCustomValid) return;
     setSaving(true);
-    await apiFetch("/api/tasks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: title.trim(),
-        goalId: resolvedGoalId,
-        dueDate: dueDate || undefined,
-        priority,
-        recurrence,
-        recurrenceDays: recurrence === "custom" ? recurrenceDays : undefined,
-      }),
-    });
-    setSaving(false);
-    setTitle("");
-    setDueDate(defaultDueDate ?? "");
-    setPriority(4);
-    setRecurrence("none");
-    setRecurrenceDays([]);
-    router.refresh();
-    onClose?.();
+    try {
+      await apiFetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          goalId: resolvedGoalId,
+          dueDate: dueDate || undefined,
+          priority,
+          recurrence,
+          recurrenceDays: recurrence === "custom" ? recurrenceDays : undefined,
+        }),
+      });
+      setTitle("");
+      setDueDate(defaultDueDate ?? "");
+      setPriority(4);
+      setRecurrence("none");
+      setRecurrenceDays([]);
+      router.refresh();
+      onClose?.();
+    } catch {
+      // apiFetch already surfaced a toast — leave the form filled in so nothing's lost
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

@@ -33,11 +33,16 @@ export default function NotificationSettings() {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ timezone: detectedTz }),
+          }).catch(() => {
+            // apiFetch already surfaced a toast — still reflect the detected tz locally
           });
           setSettings({ ...s, timezone: detectedTz });
         } else {
           setSettings(s);
         }
+      })
+      .catch(() => {
+        // apiFetch already surfaced a toast — settings stays null, shows "Loading…" below
       });
 
     // Check if already subscribed
@@ -98,24 +103,29 @@ export default function NotificationSettings() {
   }
 
   async function saveSettings(patch: Partial<NotificationSettings>) {
+    const previous = settings;
     const updated = { ...settings!, ...patch };
     setSettings(updated);
-    await apiFetch("/api/push/settings", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    });
+    try {
+      await apiFetch("/api/push/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+    } catch {
+      setSettings(previous); // apiFetch already surfaced a toast — roll back the optimistic update
+    }
   }
 
   async function sendTest() {
     setTesting(true);
     setTestResult(null);
-    const res = await apiFetch("/api/push/notify", { method: "POST" });
-    const data = await res.json();
-    if (res.ok) {
+    try {
+      const res = await apiFetch("/api/push/notify", { method: "POST" });
+      const data = await res.json();
       setTestResult(data.sent > 0 ? `Sent! Check for the notification.` : "No active subscription found.");
-    } else {
-      setTestResult(data.error ?? "Failed to send.");
+    } catch {
+      // apiFetch already surfaced a toast
     }
     setTesting(false);
   }

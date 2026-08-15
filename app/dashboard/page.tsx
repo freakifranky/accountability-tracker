@@ -11,6 +11,7 @@ import { isTaskScheduledForDate, normalizeTaskCompletion } from "@/lib/task-util
 import DashboardStats from "@/components/dashboard/DashboardStats";
 import GoalList from "@/components/dashboard/GoalList";
 import TodayTasks from "@/components/dashboard/TodayTasks";
+import UnsortedTasks from "@/components/dashboard/UnsortedTasks";
 import CoachCallout from "@/components/dashboard/CoachCallout";
 import InstallBanner from "@/components/pwa/InstallBanner";
 import NotificationNudge from "@/components/push/NotificationNudge";
@@ -82,6 +83,10 @@ export default async function DashboardPage({
   const completedToday = tasksDueToday.filter((t) => t.completed).length;
   const totalDueToday = tasksDueToday.filter((t) => !t.completed).length;
 
+  // Standalone tasks (no goal) never show in tasksDueToday — surface them here
+  // instead so captured items that didn't match a goal aren't invisible.
+  const unsortedTasks = allTasks.filter((t) => t.goalId === null);
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-20 sm:pb-6">
       <InstallBanner />
@@ -93,6 +98,7 @@ export default async function DashboardPage({
       />
       <CoachCallout messages={coachMessages} />
       <TodayTasks tasks={tasksDueToday} goals={allGoals} initialAdding={action === "add-task"} />
+      <UnsortedTasks tasks={unsortedTasks} goals={activeGoals} />
       <GoalList activeGoals={activeGoals} archivedGoals={archivedGoals} taskCountByGoal={taskCountByGoal} highlightCheckin={action === "checkin"} />
     </div>
   );

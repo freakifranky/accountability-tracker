@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllTasks, createTask } from "@/lib/db/tasks";
+import { getAllGoals } from "@/lib/db/goals";
+import { filterTasksForActiveGoals } from "@/lib/task-utils";
 
+// Nothing in the app currently calls this GET directly (pages read
+// getAllTasks() themselves), but it's a public collection endpoint — filtering
+// here too means any future caller (or a manual check like the one that found
+// this bug) doesn't get tasks under archived goals by surprise.
 export async function GET() {
-  return NextResponse.json(await getAllTasks());
+  const [tasks, activeGoals] = await Promise.all([getAllTasks(), getAllGoals(false)]);
+  const activeGoalIds = new Set(activeGoals.map((g) => g.id));
+  return NextResponse.json(filterTasksForActiveGoals(tasks, activeGoalIds));
 }
 
 export async function POST(request: NextRequest) {
