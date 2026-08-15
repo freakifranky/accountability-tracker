@@ -5,7 +5,7 @@
     android:minResizeWidth="120dp"
     android:minResizeHeight="50dp"
     android:maxResizeWidth="500dp"
-    android:maxResizeHeight="300dp"
+    android:maxResizeHeight="450dp"
     android:targetCellWidth="3"
     android:targetCellHeight="2"
     android:updatePeriodMillis="1800000"

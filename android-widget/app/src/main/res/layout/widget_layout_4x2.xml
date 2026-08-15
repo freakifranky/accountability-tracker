@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Wide 4x2: same hero-task pattern as 3x2, with more horizontal and
-     vertical room for a slightly larger task title. -->
+<!-- Wide 4x2: same scrollable list as 3x2, more horizontal room per row. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/widget_background"
-    android:padding="16dp">
+    android:padding="14dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -33,40 +32,8 @@
             android:text="🔥 —"
             android:textColor="#1a1a1a"
             android:textSize="13sp"
-            android:fontFamily="sans-serif-medium" />
-
-    </LinearLayout>
-
-    <TextView
-        android:id="@+id/tv_hero_task"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginTop="6dp"
-        android:text=""
-        android:textColor="#1a1a1a"
-        android:textSize="19sp"
-        android:fontFamily="sans-serif-medium"
-        android:maxLines="2"
-        android:ellipsize="end"
-        android:gravity="center_vertical" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:id="@+id/tv_status"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text=""
-            android:textColor="#9ca3af"
-            android:textSize="12sp"
-            android:maxLines="1"
-            android:ellipsize="end" />
+            android:fontFamily="sans-serif-medium"
+            android:layout_marginEnd="8dp" />
 
         <TextView
             android:id="@+id/btn_refresh"
@@ -74,9 +41,34 @@
             android:layout_height="wrap_content"
             android:text="↻"
             android:textColor="#9ca3af"
-            android:textSize="16sp"
-            android:padding="6dp" />
+            android:textSize="15sp"
+            android:padding="4dp" />
 
     </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="6dp">
+
+        <ListView
+            android:id="@+id/lv_tasks"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:divider="@null"
+            android:dividerHeight="0dp"
+            android:scrollbars="none" />
+
+        <TextView
+            android:id="@+id/tv_empty"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text=""
+            android:textColor="#9ca3af"
+            android:textSize="14sp" />
+
+    </FrameLayout>
 
 </LinearLayout>

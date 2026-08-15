@@ -44,11 +44,34 @@ class CommitWidgetProvider : AppWidgetProvider() {
                 WidgetUpdateService.enqueueWork(context)
             }
             ACTION_COMPLETE_TASK_ROW -> {
+                // 4x1's whole-row tap-to-complete (hero layout only).
                 val taskId = intent.getStringExtra(WidgetUpdateService.EXTRA_TASK_ID) ?: return
                 val manager = AppWidgetManager.getInstance(context)
                 val ids = manager.getAppWidgetIds(ComponentName(context, CommitWidgetProvider::class.java))
                 for (id in ids) showLoading(context, manager, id) // immediate feedback, real state lands on refresh
                 WidgetUpdateService.enqueueCompleteTask(context, taskId)
+            }
+            ACTION_ROW_TAP -> {
+                // 3x2/4x2 scrollable list: one row, two independent tap targets —
+                // routed here via a single PendingIntent template (setPendingIntentTemplate)
+                // with per-row fill-in intents supplying which task and which action.
+                val taskId = intent.getStringExtra(WidgetUpdateService.EXTRA_TASK_ID) ?: return
+                when (intent.getStringExtra(EXTRA_TAP_KIND)) {
+                    TAP_KIND_OPEN -> {
+                        val url = intent.getStringExtra(EXTRA_SOURCE_URL)?.takeIf { it.isNotBlank() } ?: OPEN_APP_URL
+                        val openIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(openIntent)
+                    }
+                    TAP_KIND_COMPLETE -> {
+                        // No optimistic loading state here (unlike the hero path) —
+                        // the row stays visible until notifyAppWidgetViewDataChanged
+                        // (fired at the end of the same work item) reloads the list,
+                        // which is fast enough not to need one.
+                        WidgetUpdateService.enqueueCompleteTask(context, taskId)
+                    }
+                }
             }
         }
     }
@@ -56,18 +79,32 @@ class CommitWidgetProvider : AppWidgetProvider() {
     private fun showLoading(context: Context, manager: AppWidgetManager, id: Int) {
         val layout = pickLayout(manager, id)
         val views = RemoteViews(context.packageName, layout)
-        views.setTextViewText(R.id.tv_hero_task, "Loading…")
+        if (layout == R.layout.widget_layout_4x1) {
+            views.setTextViewText(R.id.tv_hero_task, "Loading…")
+        } else {
+            applyListSkeleton(context, views, id, "Loading…")
+        }
         manager.updateAppWidget(id, views)
     }
 
     companion object {
         const val ACTION_REFRESH = "com.commit.tracker.WIDGET_REFRESH"
         const val ACTION_COMPLETE_TASK_ROW = "com.commit.tracker.WIDGET_COMPLETE_TASK_ROW"
+        const val ACTION_ROW_TAP = "com.commit.tracker.WIDGET_ROW_TAP"
+        const val EXTRA_TAP_KIND = "tap_kind"
+        const val EXTRA_SOURCE_URL = "source_url"
+        const val TAP_KIND_OPEN = "open"
+        const val TAP_KIND_COMPLETE = "complete"
+        const val OPEN_APP_URL = "https://accountability-tracker-mu.vercel.app/dashboard"
 
         fun applyError(context: Context, manager: AppWidgetManager, id: Int, message: String) {
             val layout = pickLayout(manager, id)
             val views = RemoteViews(context.packageName, layout)
-            views.setTextViewText(R.id.tv_hero_task, "⚠ $message")
+            if (layout == R.layout.widget_layout_4x1) {
+                views.setTextViewText(R.id.tv_hero_task, "⚠ $message")
+            } else {
+                applyListSkeleton(context, views, id, "⚠ $message")
+            }
             manager.updateAppWidget(id, views)
         }
 
@@ -84,15 +121,6 @@ class CommitWidgetProvider : AppWidgetProvider() {
             }
         }
 
-        /**
-         * Action-first widget, redesigned after feedback that the old
-         * multi-row task list was too cramped to read or tap accurately at
-         * widget size. Instead of a list, shows ONE task — the next thing to
-         * do — in large text, with the whole card as the tap target
-         * (Duolingo-style: one clear action, not a mini dashboard). The full
-         * task list still lives in the app; the widget's job is just to get
-         * you started on the next thing.
-         */
         fun applyData(
             context: Context,
             appWidgetManager: AppWidgetManager,
@@ -104,46 +132,13 @@ class CommitWidgetProvider : AppWidgetProvider() {
         ) {
             val layout = pickLayout(appWidgetManager, appWidgetId)
             val views = RemoteViews(context.packageName, layout)
-
-            // Already sorted pending-first, priority-ascending by /api/widget —
-            // the first pending task is "the next thing to do."
-            val pendingTasks = tasks.filter { !it.completed }
-            val heroTask = pendingTasks.firstOrNull()
-            val remainingAfterHero = (pendingTasks.size - 1).coerceAtLeast(0)
-
             views.setTextViewText(R.id.tv_streak, "🔥 $topStreak")
 
-            when {
-                heroTask != null -> {
-                    val prefix = if (heroTask.priority == 1) "● " else ""
-                    views.setTextViewText(R.id.tv_hero_task, "$prefix${heroTask.title}")
-                    setStatusText(
-                        views, layout,
-                        if (remainingAfterHero > 0) "+$remainingAfterHero more today" else "Tap to complete"
-                    )
-                    // Whole card completes this task — the primary action.
-                    val completeIntent = Intent(context, CommitWidgetProvider::class.java).apply {
-                        action = ACTION_COMPLETE_TASK_ROW
-                        putExtra(WidgetUpdateService.EXTRA_TASK_ID, heroTask.id)
-                    }
-                    val completePending = PendingIntent.getBroadcast(
-                        context, appWidgetId, completeIntent,
-                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                    )
-                    views.setOnClickPendingIntent(R.id.widget_root, completePending)
-                }
-                totalTasks > 0 -> {
-                    // Everything scheduled today is done — celebratory state, not
-                    // another empty "0/0" that could read as nothing happening.
-                    views.setTextViewText(R.id.tv_hero_task, "✓ All done for today")
-                    setStatusText(views, layout, "Nice work — $todayComplete/$totalTasks complete")
-                    setOpenAppTap(context, views, appWidgetId)
-                }
-                else -> {
-                    views.setTextViewText(R.id.tv_hero_task, "Nothing due today")
-                    setStatusText(views, layout, "Open the app to add something")
-                    setOpenAppTap(context, views, appWidgetId)
-                }
+            if (layout == R.layout.widget_layout_4x1) {
+                applyHeroData(context, views, appWidgetId, tasks)
+            } else {
+                val emptyText = if (totalTasks == 0) "Nothing due today" else "✓ All done for today"
+                applyListSkeleton(context, views, appWidgetId, emptyText)
             }
 
             // Refresh — its own tap target, takes priority over the root's
@@ -160,14 +155,75 @@ class CommitWidgetProvider : AppWidgetProvider() {
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
 
-        // tv_status doesn't exist on the 4x1 (single-row) layout — no room for it.
-        private fun setStatusText(views: RemoteViews, layout: Int, text: String) {
-            if (layout == R.layout.widget_layout_4x1) return
-            views.setTextViewText(R.id.tv_status, text)
+        /**
+         * 4x1 only: a single row has no room for a scrollable list or two
+         * separate tap targets, so it keeps the original action-first design —
+         * shows the next pending task, whole row completes it on tap.
+         */
+        private fun applyHeroData(
+            context: Context,
+            views: RemoteViews,
+            appWidgetId: Int,
+            tasks: List<WidgetUpdateService.TaskItem>
+        ) {
+            // Already sorted pending-first, priority-ascending by /api/widget —
+            // the first pending task is "the next thing to do."
+            val heroTask = tasks.firstOrNull { !it.completed }
+
+            if (heroTask != null) {
+                val prefix = if (heroTask.priority == 1) "● " else ""
+                views.setTextViewText(R.id.tv_hero_task, "$prefix${heroTask.title}")
+                val completeIntent = Intent(context, CommitWidgetProvider::class.java).apply {
+                    action = ACTION_COMPLETE_TASK_ROW
+                    putExtra(WidgetUpdateService.EXTRA_TASK_ID, heroTask.id)
+                }
+                val completePending = PendingIntent.getBroadcast(
+                    context, appWidgetId, completeIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                views.setOnClickPendingIntent(R.id.widget_root, completePending)
+            } else if (tasks.isNotEmpty()) {
+                // Everything scheduled today is done — celebratory state, not
+                // another empty "0/0" that could read as nothing happening.
+                views.setTextViewText(R.id.tv_hero_task, "✓ All done for today")
+                setOpenAppTap(context, views, appWidgetId)
+            } else {
+                views.setTextViewText(R.id.tv_hero_task, "Nothing due today")
+                setOpenAppTap(context, views, appWidgetId)
+            }
+        }
+
+        /**
+         * 3x2/4x2: wires the scrollable list to WidgetItemsService's
+         * RemoteViewsFactory (which does its own independent /api/widget fetch
+         * to build rows) and the shared tap-routing template every row's
+         * fill-in intent merges into. Called for every push to this layout —
+         * loading, error, and real data alike — so the adapter binding and
+         * empty-state view are always freshly, consistently established
+         * rather than assumed to carry over from a previous push.
+         *
+         * FLAG_MUTABLE is required on the template PendingIntent (not
+         * FLAG_IMMUTABLE like the other PendingIntents in this file) — Android
+         * 12+ silently drops fill-in intent extras on an immutable template,
+         * which would make every row look tappable but do nothing.
+         */
+        private fun applyListSkeleton(context: Context, views: RemoteViews, appWidgetId: Int, emptyText: String) {
+            views.setTextViewText(R.id.tv_empty, emptyText)
+            views.setRemoteAdapter(R.id.lv_tasks, Intent(context, WidgetItemsService::class.java))
+            views.setEmptyView(R.id.lv_tasks, R.id.tv_empty)
+
+            val rowTapIntent = Intent(context, CommitWidgetProvider::class.java).apply {
+                action = ACTION_ROW_TAP
+            }
+            val rowTapPending = PendingIntent.getBroadcast(
+                context, appWidgetId, rowTapIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            )
+            views.setPendingIntentTemplate(R.id.lv_tasks, rowTapPending)
         }
 
         private fun setOpenAppTap(context: Context, views: RemoteViews, appWidgetId: Int) {
-            val openIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://accountability-tracker-mu.vercel.app/dashboard"))
+            val openIntent = Intent(Intent.ACTION_VIEW, Uri.parse(OPEN_APP_URL))
             val openPending = PendingIntent.getActivity(
                 context, appWidgetId, openIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
