@@ -29,12 +29,28 @@ async function isRevisitedAcrossSpan(url) {
 // Mirrors lib/capture/normalizeUrl.ts closely enough for local dedup
 // bookkeeping. The server does the authoritative dedup by sourceId — this is
 // just to avoid re-POSTing the same page every 6-hour scan.
+const TRACKING_PARAMS = [
+  "si", "feature",
+  "gclid", "gbraid", "wbraid", "dclid",
+  "fbclid",
+  "msclkid",
+  "twclid", "ttclid", "igshid",
+  "mc_cid", "mc_eid",
+  "_ga", "_gl",
+  "ref", "ref_src",
+  "yclid",
+];
+const TRACKING_PARAM_PREFIXES = ["utm_", "gad_"];
+
 function normalizeUrlLocally(rawUrl) {
   try {
     const url = new URL(rawUrl);
-    ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "si", "feature"].forEach((p) =>
-      url.searchParams.delete(p)
-    );
+    Array.from(url.searchParams.keys()).forEach((key) => {
+      const lower = key.toLowerCase();
+      if (TRACKING_PARAMS.includes(lower) || TRACKING_PARAM_PREFIXES.some((p) => lower.startsWith(p))) {
+        url.searchParams.delete(key);
+      }
+    });
     const host = url.hostname.replace(/^www\./, "");
     const path = url.pathname.replace(/\/$/, "");
     const query = url.searchParams.toString();

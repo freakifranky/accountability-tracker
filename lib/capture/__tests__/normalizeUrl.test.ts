@@ -20,6 +20,14 @@ describe("normalizeUrlForDedup", () => {
     expect(a).toBe(b);
   });
 
+  it("strips Google Ads click params so the same page via an ad link still dedups (production incident)", () => {
+    const viaAd = normalizeUrlForDedup(
+      "https://www.hostinger.com/id/applications/hermes-agent?utm_source=google&utm_medium=cpc&utm_id=23668390471&gad_source=1&gad_campaignid=23668390471&gbraid=0AAAAADMy-hZCSJz2gk36BmgMn03tereum&gclid=Cj0KCQjw"
+    );
+    const direct = normalizeUrlForDedup("https://www.hostinger.com/id/applications/hermes-agent");
+    expect(viaAd).toBe(direct);
+  });
+
   it("keeps non-tracking query params, since they can change the actual page", () => {
     const a = normalizeUrlForDedup("https://example.com/watch?v=abc123");
     const b = normalizeUrlForDedup("https://example.com/watch?v=def456");
