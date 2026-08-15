@@ -113,6 +113,7 @@ export interface CreateTaskInput {
 }
 
 export interface UpdateTaskInput {
+  goalId?: string | null; // move a standalone task into a goal, or null to unassign
   title?: string;
   dueDate?: string;
   priority?: Priority;

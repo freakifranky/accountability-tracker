@@ -99,7 +99,7 @@ async function scanHistory() {
       await chrome.storage.local.set({
         submittedSourceIds: Array.from(submitted),
         lastScanAt: now,
-        lastScanResult: `Captured ${data.created} item${data.created === 1 ? "" : "s"} (${data.discarded} didn't match a goal, ${data.duplicates} already captured).`,
+        lastScanResult: `Captured ${data.created} item${data.created === 1 ? "" : "s"} (${data.matched} matched a goal, ${data.unsorted} unsorted, ${data.duplicates} already captured).`,
       });
     } else {
       await chrome.storage.local.set({
