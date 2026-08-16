@@ -1,35 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Compact 4x1: one row — progress + check-in button -->
+<!-- Compact 4x1: one row, streak + hero task, no room for status text.
+     The whole row is the tap target. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="horizontal"
     android:background="@drawable/widget_background"
-    android:paddingStart="16dp"
-    android:paddingEnd="12dp"
-    android:paddingTop="0dp"
-    android:paddingBottom="0dp"
+    android:paddingStart="14dp"
+    android:paddingEnd="10dp"
     android:gravity="center_vertical">
 
     <TextView
-        android:id="@+id/tv_app_name"
+        android:id="@+id/tv_streak"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Commit"
+        android:text="🔥 —"
         android:textColor="#e44332"
         android:textSize="13sp"
         android:fontFamily="sans-serif-medium"
         android:layout_marginEnd="10dp" />
 
     <TextView
-        android:id="@+id/tv_progress"
+        android:id="@+id/tv_hero_task"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:text="— / — tasks"
+        android:text=""
         android:textColor="#1a1a1a"
-        android:textSize="13sp"
-        android:fontFamily="sans-serif-medium" />
+        android:textSize="14sp"
+        android:fontFamily="sans-serif-medium"
+        android:maxLines="1"
+        android:ellipsize="end" />
 
     <TextView
         android:id="@+id/btn_refresh"
@@ -37,20 +39,7 @@
         android:layout_height="wrap_content"
         android:text="↻"
         android:textColor="#9ca3af"
-        android:textSize="18sp"
-        android:padding="6dp"
-        android:layout_marginEnd="4dp" />
-
-    <TextView
-        android:id="@+id/btn_checkin"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Check in →"
-        android:textColor="#ffffff"
-        android:textSize="12sp"
-        android:fontFamily="sans-serif-medium"
-        android:background="@drawable/btn_primary"
-        android:paddingHorizontal="14dp"
-        android:paddingVertical="8dp" />
+        android:textSize="16sp"
+        android:padding="6dp" />
 
 </LinearLayout>

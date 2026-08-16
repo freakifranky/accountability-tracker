@@ -1,19 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Wide 4x2: progress + up to 5 tasks + check-in -->
+<!-- Wide 4x2: same scrollable list as 3x2, more horizontal room per row. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/widget_background"
-    android:padding="16dp"
-    android:gravity="center_vertical">
+    android:padding="14dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="8dp">
+        android:gravity="center_vertical">
 
         <TextView
             android:id="@+id/tv_app_name"
@@ -27,92 +26,13 @@
             android:letterSpacing="0.05" />
 
         <TextView
-            android:id="@+id/tv_progress"
+            android:id="@+id/tv_streak"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="— / — tasks done"
+            android:text="🔥 —"
             android:textColor="#1a1a1a"
-            android:textSize="12sp"
-            android:fontFamily="sans-serif-medium" />
-
-    </LinearLayout>
-
-    <!-- Task rows (up to 5) -->
-    <TextView
-        android:id="@+id/tv_task1"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text=""
-        android:textColor="#374151"
-        android:textSize="12sp"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:paddingVertical="2dp" />
-
-    <TextView
-        android:id="@+id/tv_task2"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text=""
-        android:textColor="#374151"
-        android:textSize="12sp"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:paddingVertical="2dp" />
-
-    <TextView
-        android:id="@+id/tv_task3"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text=""
-        android:textColor="#374151"
-        android:textSize="12sp"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:paddingVertical="2dp" />
-
-    <TextView
-        android:id="@+id/tv_task4"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text=""
-        android:textColor="#374151"
-        android:textSize="12sp"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:paddingVertical="2dp" />
-
-    <TextView
-        android:id="@+id/tv_task5"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text=""
-        android:textColor="#374151"
-        android:textSize="12sp"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:paddingVertical="2dp"
-        android:layout_marginBottom="8dp" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:id="@+id/btn_checkin"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Check in →"
-            android:textColor="#ffffff"
-            android:textSize="12sp"
-            android:gravity="center"
+            android:textSize="13sp"
             android:fontFamily="sans-serif-medium"
-            android:background="@drawable/btn_primary"
-            android:paddingHorizontal="14dp"
-            android:paddingVertical="7dp"
             android:layout_marginEnd="8dp" />
 
         <TextView
@@ -121,9 +41,34 @@
             android:layout_height="wrap_content"
             android:text="↻"
             android:textColor="#9ca3af"
-            android:textSize="18sp"
+            android:textSize="15sp"
             android:padding="4dp" />
 
     </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="6dp">
+
+        <ListView
+            android:id="@+id/lv_tasks"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:divider="@null"
+            android:dividerHeight="0dp"
+            android:scrollbars="none" />
+
+        <TextView
+            android:id="@+id/tv_empty"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text=""
+            android:textColor="#9ca3af"
+            android:textSize="14sp" />
+
+    </FrameLayout>
 
 </LinearLayout>

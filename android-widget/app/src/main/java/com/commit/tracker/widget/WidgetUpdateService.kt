@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.app.JobIntentService
 import com.commit.tracker.BuildConfig
+import com.commit.tracker.R
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -33,7 +34,8 @@ class WidgetUpdateService : JobIntentService() {
                     appWidgetId = id,
                     todayComplete = result.data.todayComplete,
                     totalTasks = result.data.totalTasks,
-                    tasks = result.data.tasks
+                    tasks = result.data.tasks,
+                    topStreak = result.data.topStreak
                 )
             }
             is FetchResult.Error -> for (id in ids) {
@@ -43,6 +45,14 @@ class WidgetUpdateService : JobIntentService() {
                 CommitWidgetProvider.applyError(this, manager, id, result.message)
             }
         }
+
+        // The scrollable list (3x2/4x2) is backed by its own RemoteViewsFactory,
+        // which does its own independent /api/widget fetch — this call is what
+        // tells it to re-run that fetch and rebuild rows. It runs *after* the
+        // completeTask() call above (same onHandleWork, sequential), so a row
+        // tapped complete has already landed server-side by the time the list
+        // re-fetches — no race between the PATCH and the next GET.
+        for (id in ids) manager.notifyAppWidgetViewDataChanged(id, R.id.lv_tasks)
     }
 
     private fun authorizedRequest(): Request.Builder {
@@ -74,6 +84,7 @@ class WidgetUpdateService : JobIntentService() {
 
                 val todayComplete = json.getInt("todayComplete")
                 val totalTasks = json.getInt("totalTasks")
+                val topStreak = json.optInt("topStreak", 0)
 
                 val tasksArray = json.getJSONArray("tasks")
                 val tasks = mutableListOf<TaskItem>()
@@ -83,11 +94,12 @@ class WidgetUpdateService : JobIntentService() {
                         id = t.getString("id"),
                         title = t.getString("title"),
                         completed = t.getBoolean("completed"),
-                        priority = t.getInt("priority")
+                        priority = t.getInt("priority"),
+                        sourceUrl = if (t.isNull("sourceUrl")) null else t.optString("sourceUrl", null)
                     ))
                 }
 
-                FetchResult.Success(WidgetData(todayComplete, totalTasks, tasks))
+                FetchResult.Success(WidgetData(todayComplete, totalTasks, tasks, topStreak))
             }
         } catch (e: Exception) {
             FetchResult.Error("Connection failed: ${e.message ?: e.javaClass.simpleName}")
@@ -128,13 +140,15 @@ class WidgetUpdateService : JobIntentService() {
         val id: String,
         val title: String,
         val completed: Boolean,
-        val priority: Int
+        val priority: Int,
+        val sourceUrl: String? = null
     )
 
     data class WidgetData(
         val todayComplete: Int,
         val totalTasks: Int,
-        val tasks: List<TaskItem>
+        val tasks: List<TaskItem>,
+        val topStreak: Int
     )
 
     companion object {
