@@ -222,10 +222,13 @@ class CommitWidgetProvider : AppWidgetProvider() {
             views.setPendingIntentTemplate(R.id.lv_tasks, rowTapPending)
 
             // Row taps and the refresh button are both already spoken for, so
-            // the "Commit" wordmark in the header is the way into the full app
-            // from this layout — otherwise there's no path back to it at all
-            // once the list has items in it.
+            // the "Commit" wordmark in the header is one way into the full app.
+            // tv_empty also gets it — when the list is empty, that message
+            // ("Nothing due today" / "✓ All done for today") IS the widget as
+            // far as tap area goes, and it had no handler at all before this,
+            // so most of the widget was dead space with nothing due.
             setOpenAppTap(context, views, appWidgetId, R.id.tv_app_name)
+            setOpenAppTap(context, views, appWidgetId, R.id.tv_empty)
         }
 
         private fun setOpenAppTap(context: Context, views: RemoteViews, appWidgetId: Int, targetViewId: Int) {
