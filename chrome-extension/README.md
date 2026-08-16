@@ -9,7 +9,8 @@ Scans your browsing history every 6 hours, sends every page you visit into your 
 3. Click **Load unpacked**, select this `chrome-extension/` folder
 4. Click the extension icon in your toolbar → **Settings**
 5. Enter your tracker's URL (e.g. `https://accountability-tracker-mu.vercel.app`) and the same secret you set as `NEXT_PUBLIC_API_SHARED_SECRET` on the tracker
-6. Click **Save**
+6. Optionally, list domains/keywords under **Never capture** — one per line, matched against both the page title and the URL (see "Noise filtering" below)
+7. Click **Save**
 
 ## How it works
 
@@ -19,9 +20,14 @@ Scans your browsing history every 6 hours, sends every page you visit into your 
 - The tracker classifies each item against your active goals (keyword match) — a match auto-attaches it to that goal, no match still creates the task, just standalone in the dashboard's "Unsorted" section for you to sort or delete
 - Tracks which URLs it's already sent locally, so it won't resend the same page on every scan
 
+## Noise filtering
+
+- **Built-in**: login/sign-in/auth pages are always skipped — matched by title (e.g. "Sign in", "Verify your...") and a short list of common auth hosts (`accounts.google.com`, etc.) — since these are never real content regardless of topic.
+- **Your list**: the Settings "Never capture" field is for habit-tabs no algorithm could guess — your email inbox, calendar, banking, or anything else you check reflexively but never treat as content to revisit. Each line is a substring matched case-insensitively against both title and host.
+- What neither filter can catch: a page you opened once, glanced at, and moved on from — that looks identical to genuine content from the outside. That's what deleting it from Unsorted is for.
+
 ## What it does NOT do
 
 - Doesn't read page content, only title + URL
 - Doesn't touch anything from before you installed/updated this version — no history backlog flood
-- Doesn't filter by domain or revisit pattern — the app's checkbox and delete button are your triage, not the extension
 - Doesn't publish anywhere — this is a personal, unpacked install only

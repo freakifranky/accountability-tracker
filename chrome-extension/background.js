@@ -55,6 +55,52 @@ function normalizeUrlLocally(rawUrl) {
   }
 }
 
+// Built-in noise filter — pages that are structurally never worth capturing
+// regardless of topic, because they're transient auth/login flows, not
+// content. Title match catches most providers without needing to enumerate
+// every possible auth domain; the host list covers the handful of common
+// ones where the title alone might not be distinctive enough.
+const AUTH_TITLE_PATTERNS = [
+  "sign in", "log in", "login", "authenticate", "authentication",
+  "verify your", "two-factor", "2-step verification", "one-time passcode",
+  "enter your password", "reset your password", "forgot password",
+];
+const AUTH_HOSTS = [
+  "accounts.google.com",
+  "login.microsoftonline.com",
+  "appleid.apple.com",
+  "login.live.com",
+  "auth0.com",
+  "okta.com",
+];
+
+function isAuthNoise(title, url) {
+  const t = title.toLowerCase();
+  if (AUTH_TITLE_PATTERNS.some((p) => t.includes(p))) return true;
+  try {
+    const host = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+    return AUTH_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+  } catch {
+    return false;
+  }
+}
+
+// User-maintained exclude list (Settings) — for habit-tabs no algorithm could
+// guess (your email inbox, calendar, banking, whatever you personally check
+// reflexively). Matched as a case-insensitive substring against both the
+// title and the host, so one entry like "gmail" or "mail.google.com" works
+// either way without the user needing to know which field to target.
+function buildExcludeChecker(excludePatterns) {
+  const patterns = excludePatterns.map((p) => p.toLowerCase().trim()).filter(Boolean);
+  if (patterns.length === 0) return () => false;
+  return (title, url) => {
+    const t = title.toLowerCase();
+    let host = "";
+    try { host = new URL(url).hostname.toLowerCase(); } catch { /* leave host empty */ }
+    return patterns.some((p) => t.includes(p) || host.includes(p));
+  };
+}
+
 async function scanHistory() {
   const { apiBaseUrl, apiSecret } = await chrome.storage.local.get(["apiBaseUrl", "apiSecret"]);
   if (!apiBaseUrl || !apiSecret) {
@@ -67,6 +113,9 @@ async function scanHistory() {
 
   const { submittedSourceIds = [] } = await chrome.storage.local.get("submittedSourceIds");
   const submitted = new Set(submittedSourceIds);
+
+  const { excludePatterns = [] } = await chrome.storage.local.get("excludePatterns");
+  const isUserExcluded = buildExcludeChecker(excludePatterns);
 
   const now = Date.now();
   // lastScanCursor is the forward-only high-water mark: only visits after it
@@ -81,9 +130,14 @@ async function scanHistory() {
   });
 
   const candidates = [];
+  let skippedNoise = 0;
   for (const item of items) {
     if (!item.url || !item.title) continue;
     if (!item.url.startsWith("http")) continue; // skip chrome://, extension pages, etc.
+    if (isAuthNoise(item.title, item.url) || isUserExcluded(item.title, item.url)) {
+      skippedNoise++;
+      continue;
+    }
 
     const sourceId = normalizeUrlLocally(item.url);
     if (submitted.has(sourceId)) continue; // already sent — don't resend the same page every scan
@@ -93,7 +147,12 @@ async function scanHistory() {
   }
 
   if (candidates.length === 0) {
-    await chrome.storage.local.set({ lastScanAt: now, lastScanCursor: now, lastScanResult: "Nothing new to capture." });
+    const suffix = skippedNoise > 0 ? ` (${skippedNoise} filtered as noise)` : "";
+    await chrome.storage.local.set({
+      lastScanAt: now,
+      lastScanCursor: now,
+      lastScanResult: `Nothing new to capture.${suffix}`,
+    });
     return;
   }
 
@@ -113,7 +172,7 @@ async function scanHistory() {
         submittedSourceIds: Array.from(submitted),
         lastScanAt: now,
         lastScanCursor: now,
-        lastScanResult: `Captured ${data.created} item${data.created === 1 ? "" : "s"} (${data.matched} matched a goal, ${data.unsorted} unsorted, ${data.duplicates} already captured).`,
+        lastScanResult: `Captured ${data.created} item${data.created === 1 ? "" : "s"} (${data.matched} matched a goal, ${data.unsorted} unsorted, ${data.duplicates} already captured, ${skippedNoise} filtered as noise).`,
       });
     } else {
       await chrome.storage.local.set({

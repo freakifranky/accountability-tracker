@@ -8,7 +8,8 @@
   h2 { font-size: 16px; margin: 0 0 4px; }
   p.hint { font-size: 12px; color: #888; margin: 0 0 20px; }
   label { display: block; margin-top: 14px; font-size: 13px; font-weight: 600; }
-  input { width: 100%; padding: 8px 10px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 13px; }
+  input, textarea { width: 100%; padding: 8px 10px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 13px; font-family: inherit; }
+  textarea { resize: vertical; min-height: 80px; }
   button { margin-top: 18px; background: #e44332; color: white; border: none; padding: 9px 18px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
   button:hover { background: #c0392b; }
   p.status { font-size: 12px; color: #16a34a; margin-top: 10px; height: 14px; }
@@ -21,6 +22,9 @@
   <input id="apiBaseUrl" placeholder="https://accountability-tracker-mu.vercel.app" />
   <label for="apiSecret">API Secret</label>
   <input id="apiSecret" type="password" placeholder="Same value as NEXT_PUBLIC_API_SHARED_SECRET" />
+  <label for="excludePatterns">Never capture (one per line)</label>
+  <textarea id="excludePatterns" placeholder="mail.google.com&#10;calendar&#10;bank"></textarea>
+  <p class="hint" style="margin: 4px 0 0;">Domain or keyword, matched against both the page title and the URL — e.g. "mail.google.com" or just "gmail" both work. Login/sign-in pages are already filtered automatically.</p>
   <button id="save">Save</button>
   <p class="status" id="status"></p>
   <script src="options.js"></script>
