@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Second Brain — History Capture",
   "version": "1.0.0",
-  "description": "Personal use only. Captures pages you visit into your accountability tracker (starting from install — no history backlog).",
+  "description": "Personal use only. Captures articles, videos, and threads worth referencing into your accountability tracker (starting from install — no history backlog).",
   "permissions": ["history", "alarms", "storage"],
   "host_permissions": ["<all_urls>"],
   "background": {
